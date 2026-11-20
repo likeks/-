@@ -429,6 +429,11 @@
       overflow-y: auto;
       border-radius: 20px 20px 0 0;
       padding: 20px 16px 28px;
+      transition: transform 0.18s ease-out;
+    }
+
+    .modal-sheet.dragging {
+      transition: none;
     }
 
     @media (min-width: 640px) {
@@ -479,7 +484,6 @@
 
     .form-control:focus { border-color: var(--primary); }
 
-    /* Блок подсказки похожих отказов */
     .similar-box {
       margin-top: 8px;
       background: var(--accent-amber-bg);
@@ -788,8 +792,8 @@
     // =========================================================================
     // ВСТАВЬТЕ СЮДА ВАШИ ДАННЫЕ ИЗ SUPABASE
     // =========================================================================
-    const SUPABASE_URL = 'https://bjnrtoqawetgnimnffud.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
+    const SUPABASE_URL = 'https://ВАШ_ID_ПРОЕКТА.supabase.co';
+    const SUPABASE_KEY = 'ВАШ_PUBLISHABLE_KEY';
     // =========================================================================
 
     const CACHE_KEY = 'pnk_faults_cache_v1';
@@ -980,7 +984,6 @@
         .subscribe();
     }
 
-    // --- Морфология и поиск ---
     function stemRu(word) {
       word = word.toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9-]/g, '');
       if (word.length < 4) return word;
@@ -1066,7 +1069,6 @@
         .replace(/"/g, '&quot;');
     }
 
-    // --- Поиск похожих отказов при создании нового ---
     function extractKeywords(text) {
       const stopWords = new Set(['нет', 'не', 'при', 'на', 'в', 'во', 'из', 'по', 'со', 'от', 'до', 'или', 'и', 'а', 'но', 'что', 'то', 'же', 'бы', 'ли']);
       const words = normalizeText(text).split(/[^а-яa-z0-9-]+/).filter(w => w.length >= 2 && !stopWords.has(w));
@@ -1078,7 +1080,6 @@
       const box = document.getElementById('similarBox');
       const listEl = document.getElementById('similarList');
 
-      // Показываем подсказку только при создании нового отказа
       if (faultId) {
         box.style.display = 'none';
         return;
@@ -1307,7 +1308,6 @@
       }).join('');
     }
 
-    // --- Редактор карточки ---
     function moveEditorBlock(btn, direction) {
       const block = btn.closest('.editor-block');
       const parent = block.parentElement;
@@ -1474,6 +1474,85 @@
     };
 
     document.getElementById('fabAdd').onclick = () => openEditor(null);
+
+    // --- Закрытие окна редактирования свайпом от левого или правого края ---
+    (function initModalEdgeSwipe() {
+      const backdrop = document.getElementById('editorModal');
+      const sheet = backdrop.querySelector('.modal-sheet');
+      const EDGE_ZONE = 36;
+      const SWIPE_THRESHOLD = 70;
+
+      let startX = 0;
+      let startY = 0;
+      let deltaX = 0;
+      let isEdgeSwipe = false;
+      let isDecided = false;
+
+      sheet.addEventListener('touchstart', (e) => {
+        if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        const vw = window.innerWidth || document.documentElement.clientWidth;
+        const nearLeft = touch.clientX <= EDGE_ZONE;
+        const nearRight = touch.clientX >= vw - EDGE_ZONE;
+
+        if (!nearLeft && !nearRight) {
+          isEdgeSwipe = false;
+          return;
+        }
+
+        startX = touch.clientX;
+        startY = touch.clientY;
+        deltaX = 0;
+        isEdgeSwipe = true;
+        isDecided = false;
+        sheet.classList.add('dragging');
+      }, { passive: true });
+
+      sheet.addEventListener('touchmove', (e) => {
+        if (!isEdgeSwipe || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        deltaX = touch.clientX - startX;
+        const deltaY = touch.clientY - startY;
+
+        if (!isDecided) {
+          if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
+          isDecided = true;
+          if (Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+            isEdgeSwipe = false;
+            sheet.classList.remove('dragging');
+            return;
+          }
+        }
+
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        sheet.style.transform = `translateX(${deltaX}px)`;
+      }, { passive: false });
+
+      function finishSwipe() {
+        if (!isEdgeSwipe) return;
+        sheet.classList.remove('dragging');
+
+        if (Math.abs(deltaX) >= SWIPE_THRESHOLD) {
+          const direction = deltaX > 0 ? 1 : -1;
+          sheet.style.transform = `translateX(${direction * window.innerWidth}px)`;
+          setTimeout(() => {
+            backdrop.classList.remove('open');
+            sheet.style.transform = '';
+          }, 160);
+        } else {
+          sheet.style.transform = '';
+        }
+
+        isEdgeSwipe = false;
+        isDecided = false;
+        deltaX = 0;
+      }
+
+      sheet.addEventListener('touchend', finishSwipe);
+      sheet.addEventListener('touchcancel', finishSwipe);
+    })();
 
     document.getElementById('saveFaultBtn').onclick = async function() {
       const btn = this;
