@@ -487,6 +487,12 @@
 
     .form-control:focus { border-color: var(--primary); }
 
+    #editorModal textarea.form-control {
+      resize: none;
+      overflow-y: hidden;
+      min-height: 44px;
+    }
+
     .similar-box {
       margin-top: 8px;
       background: var(--accent-amber-bg);
@@ -815,6 +821,22 @@
     };
 
     let realtimeChannel = null;
+
+    function autoResizeTextarea(el) {
+      if (!el || el.tagName !== 'TEXTAREA') return;
+      el.style.height = 'auto';
+      el.style.height = `${el.scrollHeight}px`;
+    }
+
+    function autoResizeAllEditorTextareas() {
+      document.querySelectorAll('#editorModal textarea.form-control').forEach(autoResizeTextarea);
+    }
+
+    document.getElementById('editorModal').addEventListener('input', (e) => {
+      if (e.target && e.target.tagName === 'TEXTAREA') {
+        autoResizeTextarea(e.target);
+      }
+    });
 
     function formatAuthorName(rawValue) {
       if (!rawValue) return '';
@@ -1383,6 +1405,7 @@
       } else if (direction === 1 && block.nextElementSibling) {
         parent.insertBefore(block.nextElementSibling, block);
       }
+      requestAnimationFrame(autoResizeAllEditorTextareas);
     }
 
     function createVariantEditorBlock(title = '', branches = []) {
@@ -1398,7 +1421,7 @@
             <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
-        <textarea class="form-control variant-title-input" rows="2" placeholder="Опишите способ устранения...">${escapeHtml(title)}</textarea>
+        <textarea class="form-control variant-title-input" rows="1" placeholder="Опишите способ устранения...">${escapeHtml(title)}</textarea>
         <div class="branches-container"></div>
         <button type="button" class="btn-small" style="margin-top:6px; padding:5px 9px; font-size:12px;" onclick="addBranchInput(this.previousElementSibling)">+ Ветка (Если → То)</button>
       `;
@@ -1420,7 +1443,7 @@
             <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
-        <textarea class="form-control note-text-input" rows="2" placeholder="Текст примечания...">${escapeHtml(text)}</textarea>
+        <textarea class="form-control note-text-input" rows="1" placeholder="Текст примечания...">${escapeHtml(text)}</textarea>
       `;
       return div;
     }
@@ -1545,14 +1568,19 @@
 
       renderEditorPhotos();
       modal.classList.add('open');
+      requestAnimationFrame(autoResizeAllEditorTextareas);
     }
 
     document.getElementById('addVariantBtn').onclick = () => {
-      document.getElementById('blocksEditorList').appendChild(createVariantEditorBlock());
+      const block = createVariantEditorBlock();
+      document.getElementById('blocksEditorList').appendChild(block);
+      requestAnimationFrame(() => autoResizeTextarea(block.querySelector('textarea')));
     };
 
     document.getElementById('addNoteBtn').onclick = () => {
-      document.getElementById('blocksEditorList').appendChild(createNoteEditorBlock());
+      const block = createNoteEditorBlock();
+      document.getElementById('blocksEditorList').appendChild(block);
+      requestAnimationFrame(() => autoResizeTextarea(block.querySelector('textarea')));
     };
 
     document.getElementById('closeModalBtn').onclick = () => {
