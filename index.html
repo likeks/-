@@ -415,6 +415,7 @@
       display: none;
       align-items: flex-end;
       justify-content: center;
+      overscroll-behavior: contain;
     }
 
     .modal-backdrop.open {
@@ -430,10 +431,12 @@
       border-radius: 20px 20px 0 0;
       padding: 20px 16px 28px;
       transition: transform 0.18s ease-out;
+      touch-action: pan-y;
     }
 
     .modal-sheet.dragging {
       transition: none;
+      touch-action: none;
     }
 
     @media (min-width: 640px) {
@@ -446,7 +449,6 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
-      touch-action: none;
     }
 
     .modal-title { font-size: 18px; font-weight: 700; }
@@ -797,7 +799,7 @@
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
-    const CACHE_KEY = 'pnk_faults_cache_v1';
+    const CACHE_KEY = 'pnk_faults_cache_v2';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
@@ -806,11 +808,44 @@
       activeChip: '',
       canEdit: false,
       userEmail: '',
+      userName: '',
+      roleNames: {},
       faults: [],
       editPhotos: []
     };
 
     let realtimeChannel = null;
+
+    function formatAuthorName(rawValue) {
+      if (!rawValue) return '';
+      const trimmed = String(rawValue).trim();
+      if (!trimmed.includes('@')) return trimmed;
+      const localPart = trimmed.split('@')[0];
+      return localPart || trimmed;
+    }
+
+    function resolveAuthorLabel(rawAuthor) {
+      if (!rawAuthor) return '';
+      const key = String(rawAuthor).trim().toLowerCase();
+      if (APP_STATE.roleNames[key]) return APP_STATE.roleNames[key];
+      return formatAuthorName(rawAuthor);
+    }
+
+    async function loadRoleNamesMap() {
+      const { data, error } = await sb
+        .from('user_roles')
+        .select('email, display_name');
+      if (!error && Array.isArray(data)) {
+        const map = {};
+        data.forEach(row => {
+          if (row.email) {
+            const cleanName = (row.display_name || '').trim();
+            map[row.email.trim().toLowerCase()] = cleanName || formatAuthorName(row.email);
+          }
+        });
+        APP_STATE.roleNames = map;
+      }
+    }
 
     async function checkSession() {
       const { data: { session } } = await sb.auth.getSession();
@@ -863,12 +898,15 @@
 
     async function initAuthorizedApp(user) {
       APP_STATE.userEmail = user.email;
+      const metaName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
+      APP_STATE.userName = metaName.trim() || formatAuthorName(user.email);
+
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainApp').style.display = 'block';
 
       const { data: roleRow, error: roleErr } = await sb
         .from('user_roles')
-        .select('role')
+        .select('role, display_name')
         .eq('email', user.email)
         .maybeSingle();
 
@@ -876,6 +914,7 @@
       if (roleErr && cached) {
         APP_STATE.canEdit = cached.canEdit || false;
         APP_STATE.faults = cached.faults || [];
+        APP_STATE.roleNames = cached.roleNames || {};
         setSyncStatus(false, 'Офлайн-копия');
         applyRoleBadge();
         renderTabs();
@@ -890,7 +929,11 @@
         return;
       }
 
+      if (roleRow.display_name && roleRow.display_name.trim()) {
+        APP_STATE.userName = roleRow.display_name.trim();
+      }
       APP_STATE.canEdit = roleRow.role === 'editor';
+      await loadRoleNamesMap();
       applyRoleBadge();
       renderTabs();
       await loadAllFaults();
@@ -921,7 +964,8 @@
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
           canEdit: APP_STATE.canEdit,
-          faults: APP_STATE.faults
+          faults: APP_STATE.faults,
+          roleNames: APP_STATE.roleNames
         }));
       } catch (e) {}
     }
@@ -945,6 +989,7 @@
         const cached = loadCache();
         if (cached && cached.faults) {
           APP_STATE.faults = cached.faults;
+          APP_STATE.roleNames = cached.roleNames || {};
           setSyncStatus(false, 'Офлайн-копия');
           renderChips();
           renderCards();
@@ -957,7 +1002,7 @@
 
       APP_STATE.faults = data || [];
       saveCache();
-      setSyncStatus(true, APP_STATE.userEmail);
+      setSyncStatus(true, APP_STATE.userName || APP_STATE.userEmail);
       renderChips();
       renderCards();
     }
@@ -1307,8 +1352,9 @@
           : '';
 
         const dt = formatDateTime(item.updated_at);
-        const metaTopHtml = (item.updated_by || dt)
-          ? `<div class="card-meta-top">Обновлено: ${escapeHtml(dt)}${item.updated_by ? ` • ${escapeHtml(item.updated_by)}` : ''}</div>`
+        const authorLabel = resolveAuthorLabel(item.updated_by);
+        const metaTopHtml = (authorLabel || dt)
+          ? `<div class="card-meta-top">Обновлено: ${escapeHtml(dt)}${authorLabel ? ` • ${escapeHtml(authorLabel)}` : ''}</div>`
           : '';
 
         const editBtnHtml = APP_STATE.canEdit
@@ -1519,8 +1565,9 @@
     (function initModalEdgeSwipe() {
       const backdrop = document.getElementById('editorModal');
       const sheet = backdrop.querySelector('.modal-sheet');
-      const EDGE_ZONE = 36;
-      const SWIPE_THRESHOLD = 70;
+      const MIN_EDGE = 16;
+      const MAX_EDGE = 68;
+      const SWIPE_THRESHOLD = 75;
 
       let startX = 0;
       let startY = 0;
@@ -1532,8 +1579,8 @@
         if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
         const touch = e.touches[0];
         const vw = window.innerWidth || document.documentElement.clientWidth;
-        const nearLeft = touch.clientX <= EDGE_ZONE;
-        const nearRight = touch.clientX >= vw - EDGE_ZONE;
+        const nearLeft = touch.clientX >= MIN_EDGE && touch.clientX <= MAX_EDGE;
+        const nearRight = touch.clientX >= vw - MAX_EDGE && touch.clientX <= vw - MIN_EDGE;
 
         if (!nearLeft && !nearRight) {
           isEdgeSwipe = false;
@@ -1545,7 +1592,6 @@
         deltaX = 0;
         isEdgeSwipe = true;
         isDecided = false;
-        sheet.classList.add('dragging');
       }, { passive: true });
 
       sheet.addEventListener('touchmove', (e) => {
@@ -1557,11 +1603,11 @@
         if (!isDecided) {
           if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
           isDecided = true;
-          if (Math.abs(deltaY) > Math.abs(deltaX) * 1.2) {
+          if (Math.abs(deltaY) > Math.abs(deltaX) * 1.15) {
             isEdgeSwipe = false;
-            sheet.classList.remove('dragging');
             return;
           }
+          sheet.classList.add('dragging');
         }
 
         if (e.cancelable) {
@@ -1592,70 +1638,6 @@
 
       sheet.addEventListener('touchend', finishSwipe);
       sheet.addEventListener('touchcancel', finishSwipe);
-    })();
-
-    // --- Закрытие окна редактирования свайпом вниз за верхнюю панель (.modal-header) ---
-    (function initModalHeaderSwipeDown() {
-      const backdrop = document.getElementById('editorModal');
-      const sheet = backdrop.querySelector('.modal-sheet');
-      const header = sheet.querySelector('.modal-header');
-      const SWIPE_DOWN_THRESHOLD = 85;
-
-      let startY = 0;
-      let startX = 0;
-      let deltaY = 0;
-      let isHeaderSwipe = false;
-
-      header.addEventListener('touchstart', (e) => {
-        if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
-        if (e.target.closest('.close-modal')) return;
-
-        const touch = e.touches[0];
-        startX = touch.clientX;
-        startY = touch.clientY;
-        deltaY = 0;
-        isHeaderSwipe = true;
-        sheet.classList.add('dragging');
-      }, { passive: true });
-
-      header.addEventListener('touchmove', (e) => {
-        if (!isHeaderSwipe || e.touches.length !== 1) return;
-        const touch = e.touches[0];
-        const moveX = touch.clientX - startX;
-        deltaY = touch.clientY - startY;
-
-        if (deltaY > 0 && Math.abs(deltaY) >= Math.abs(moveX)) {
-          if (e.cancelable) {
-            e.preventDefault();
-          }
-          sheet.style.transform = `translateY(${deltaY}px)`;
-        } else {
-          deltaY = 0;
-          sheet.style.transform = '';
-        }
-      }, { passive: false });
-
-      function finishHeaderSwipe() {
-        if (!isHeaderSwipe) return;
-        sheet.classList.remove('dragging');
-
-        if (deltaY >= SWIPE_DOWN_THRESHOLD) {
-          const sheetHeight = sheet.offsetHeight || window.innerHeight;
-          sheet.style.transform = `translateY(${sheetHeight}px)`;
-          setTimeout(() => {
-            backdrop.classList.remove('open');
-            sheet.style.transform = '';
-          }, 160);
-        } else {
-          sheet.style.transform = '';
-        }
-
-        isHeaderSwipe = false;
-        deltaY = 0;
-      }
-
-      header.addEventListener('touchend', finishHeaderSwipe);
-      header.addEventListener('touchcancel', finishHeaderSwipe);
     })();
 
     document.getElementById('saveFaultBtn').onclick = async function() {
@@ -1706,7 +1688,7 @@
         solution: lines.join('\n'),
         note: '',
         photos: APP_STATE.editPhotos.join('\n'),
-        updated_by: APP_STATE.userEmail,
+        updated_by: APP_STATE.userName || APP_STATE.userEmail,
         updated_at: new Date().toISOString()
       };
 
