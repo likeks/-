@@ -203,7 +203,6 @@
       cursor: pointer;
     }
 
-    /* Быстрые теги блоков */
     .chips-bar {
       display: flex;
       gap: 6px;
@@ -279,7 +278,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 6px;
     }
 
     .symptom {
@@ -287,6 +286,12 @@
       font-weight: 700;
       color: var(--text-main);
       line-height: 1.38;
+    }
+
+    .card-meta-top {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-bottom: 12px;
     }
 
     .edit-btn {
@@ -374,14 +379,6 @@
       border-radius: 9px;
       border: 1px solid var(--border);
       cursor: pointer;
-    }
-
-    .card-meta {
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid #f1f5f9;
-      font-size: 11.5px;
-      color: var(--text-muted);
     }
 
     mark {
@@ -481,6 +478,53 @@
     }
 
     .form-control:focus { border-color: var(--primary); }
+
+    /* Блок подсказки похожих отказов */
+    .similar-box {
+      margin-top: 8px;
+      background: var(--accent-amber-bg);
+      border: 1px solid var(--accent-amber-border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      display: none;
+    }
+
+    .similar-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent-amber);
+      margin-bottom: 6px;
+    }
+
+    .similar-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid var(--accent-amber-border);
+      border-radius: 8px;
+      padding: 7px 9px;
+      margin-top: 6px;
+    }
+
+    .similar-text {
+      font-size: 13px;
+      color: var(--text-main);
+      font-weight: 500;
+    }
+
+    .similar-open-btn {
+      flex-shrink: 0;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 7px;
+      padding: 5px 9px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
     .editor-block {
       background: var(--primary-light);
@@ -709,6 +753,10 @@
       <div class="form-group">
         <label class="form-label">Внешнее проявление отказа</label>
         <textarea id="editSymptom" class="form-control" rows="2" placeholder="Например: Горит предохранитель на УК..."></textarea>
+        <div id="similarBox" class="similar-box">
+          <div class="similar-title">Найдены похожие отказы в этой системе — возможно, стоит дополнить существующую карточку:</div>
+          <div id="similarList"></div>
+        </div>
       </div>
 
       <div class="form-group">
@@ -819,7 +867,6 @@
         .eq('email', user.email)
         .maybeSingle();
 
-      // Если нет сети, пробуем взять сохранённую роль и кэш
       const cached = loadCache();
       if (roleErr && cached) {
         APP_STATE.canEdit = cached.canEdit || false;
@@ -933,7 +980,7 @@
         .subscribe();
     }
 
-    // --- Морфология ---
+    // --- Морфология и поиск ---
     function stemRu(word) {
       word = word.toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9-]/g, '');
       if (word.length < 4) return word;
@@ -1019,6 +1066,69 @@
         .replace(/"/g, '&quot;');
     }
 
+    // --- Поиск похожих отказов при создании нового ---
+    function extractKeywords(text) {
+      const stopWords = new Set(['нет', 'не', 'при', 'на', 'в', 'во', 'из', 'по', 'со', 'от', 'до', 'или', 'и', 'а', 'но', 'что', 'то', 'же', 'бы', 'ли']);
+      const words = normalizeText(text).split(/[^а-яa-z0-9-]+/).filter(w => w.length >= 2 && !stopWords.has(w));
+      return words.map(w => stemRu(w).length >= 3 ? stemRu(w) : w);
+    }
+
+    function checkSimilarFaults() {
+      const faultId = document.getElementById('editFaultId').value;
+      const box = document.getElementById('similarBox');
+      const listEl = document.getElementById('similarList');
+
+      // Показываем подсказку только при создании нового отказа
+      if (faultId) {
+        box.style.display = 'none';
+        return;
+      }
+
+      const inputSymptom = document.getElementById('editSymptom').value.trim();
+      const targetSystem = document.getElementById('editSystem').value;
+      const inputKeys = [...new Set(extractKeywords(inputSymptom))];
+
+      if (inputKeys.length < 2) {
+        box.style.display = 'none';
+        return;
+      }
+
+      const candidates = APP_STATE.faults
+        .filter(f => f.system === targetSystem)
+        .map(f => {
+          const itemKeys = [...new Set(extractKeywords(f.symptom))];
+          if (!itemKeys.length) return null;
+          let matched = 0;
+          inputKeys.forEach(ik => {
+            if (itemKeys.some(ok => ok === ik || (ik.length >= 4 && ok.startsWith(ik)) || (ok.length >= 4 && ik.startsWith(ok)))) {
+              matched++;
+            }
+          });
+          const score = matched / Math.max(inputKeys.length, itemKeys.length);
+          return { item: f, matched, score };
+        })
+        .filter(x => x && x.matched >= 2 && x.score >= 0.45)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+
+      if (!candidates.length) {
+        box.style.display = 'none';
+        return;
+      }
+
+      listEl.innerHTML = candidates.map(c => `
+        <div class="similar-item">
+          <div class="similar-text">${escapeHtml(c.item.symptom)}</div>
+          <button type="button" class="similar-open-btn" onclick="openEditor(${c.item.id})">Открыть и дополнить</button>
+        </div>
+      `).join('');
+
+      box.style.display = 'block';
+    }
+
+    document.getElementById('editSymptom').addEventListener('input', checkSimilarFaults);
+    document.getElementById('editSystem').addEventListener('change', checkSimilarFaults);
+
     function parseCardBlocks(solutionText, legacyNoteText) {
       const blocks = [];
       let currentVariant = null;
@@ -1069,7 +1179,6 @@
       return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
-    // --- Быстрые теги блоков ---
     function renderChips() {
       const container = document.getElementById('chipsContainer');
       const items = APP_STATE.faults.filter(f => f.system === APP_STATE.currentSystem);
@@ -1176,8 +1285,8 @@
           : '';
 
         const dt = formatDateTime(item.updated_at);
-        const metaHtml = (item.updated_by || dt)
-          ? `<div class="card-meta">Обновлено: ${escapeHtml(dt)}${item.updated_by ? ` • ${escapeHtml(item.updated_by)}` : ''}</div>`
+        const metaTopHtml = (item.updated_by || dt)
+          ? `<div class="card-meta-top">Обновлено: ${escapeHtml(dt)}${item.updated_by ? ` • ${escapeHtml(item.updated_by)}` : ''}</div>`
           : '';
 
         const editBtnHtml = APP_STATE.canEdit
@@ -1190,9 +1299,9 @@
               <div class="symptom">${highlightText(item.symptom, query)}</div>
               ${editBtnHtml}
             </div>
+            ${metaTopHtml}
             <div class="blocks-list">${blocksHtml}</div>
             ${photosHtml}
-            ${metaHtml}
           </div>
         `;
       }).join('');
@@ -1316,6 +1425,7 @@
 
       const blocksList = document.getElementById('blocksEditorList');
       blocksList.innerHTML = '';
+      document.getElementById('similarBox').style.display = 'none';
 
       if (faultId) {
         const item = APP_STATE.faults.find(x => x.id === faultId);
