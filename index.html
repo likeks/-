@@ -446,6 +446,7 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 16px;
+      touch-action: none;
     }
 
     .modal-title { font-size: 18px; font-weight: 700; }
@@ -792,8 +793,8 @@
     // =========================================================================
     // ВСТАВЬТЕ СЮДА ВАШИ ДАННЫЕ ИЗ SUPABASE
     // =========================================================================
-    const SUPABASE_URL = 'https://ВАШ_ID_ПРОЕКТА.supabase.co';
-    const SUPABASE_KEY = 'ВАШ_PUBLISHABLE_KEY';
+    const SUPABASE_URL = 'https://bjnrtoqawetgnimnffud.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
     const CACHE_KEY = 'pnk_faults_cache_v1';
@@ -1418,6 +1419,8 @@
 
     function openEditor(faultId = null) {
       const modal = document.getElementById('editorModal');
+      const sheet = modal.querySelector('.modal-sheet');
+      sheet.style.transform = '';
       const sysSelect = document.getElementById('editSystem');
       const deleteBtn = document.getElementById('deleteFaultBtn');
       sysSelect.innerHTML = APP_STATE.systems.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -1552,6 +1555,70 @@
 
       sheet.addEventListener('touchend', finishSwipe);
       sheet.addEventListener('touchcancel', finishSwipe);
+    })();
+
+    // --- Закрытие окна редактирования свайпом вниз за верхнюю панель (.modal-header) ---
+    (function initModalHeaderSwipeDown() {
+      const backdrop = document.getElementById('editorModal');
+      const sheet = backdrop.querySelector('.modal-sheet');
+      const header = sheet.querySelector('.modal-header');
+      const SWIPE_DOWN_THRESHOLD = 85;
+
+      let startY = 0;
+      let startX = 0;
+      let deltaY = 0;
+      let isHeaderSwipe = false;
+
+      header.addEventListener('touchstart', (e) => {
+        if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
+        if (e.target.closest('.close-modal')) return;
+
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+        deltaY = 0;
+        isHeaderSwipe = true;
+        sheet.classList.add('dragging');
+      }, { passive: true });
+
+      header.addEventListener('touchmove', (e) => {
+        if (!isHeaderSwipe || e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        const moveX = touch.clientX - startX;
+        deltaY = touch.clientY - startY;
+
+        if (deltaY > 0 && Math.abs(deltaY) >= Math.abs(moveX)) {
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+          sheet.style.transform = `translateY(${deltaY}px)`;
+        } else {
+          deltaY = 0;
+          sheet.style.transform = '';
+        }
+      }, { passive: false });
+
+      function finishHeaderSwipe() {
+        if (!isHeaderSwipe) return;
+        sheet.classList.remove('dragging');
+
+        if (deltaY >= SWIPE_DOWN_THRESHOLD) {
+          const sheetHeight = sheet.offsetHeight || window.innerHeight;
+          sheet.style.transform = `translateY(${sheetHeight}px)`;
+          setTimeout(() => {
+            backdrop.classList.remove('open');
+            sheet.style.transform = '';
+          }, 160);
+        } else {
+          sheet.style.transform = '';
+        }
+
+        isHeaderSwipe = false;
+        deltaY = 0;
+      }
+
+      header.addEventListener('touchend', finishHeaderSwipe);
+      header.addEventListener('touchcancel', finishHeaderSwipe);
     })();
 
     document.getElementById('saveFaultBtn').onclick = async function() {
