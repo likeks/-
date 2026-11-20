@@ -37,7 +37,6 @@
       padding-bottom: 84px;
     }
 
-    /* Экран входа */
     .auth-screen {
       min-height: 100vh;
       display: flex;
@@ -81,7 +80,6 @@
       display: none;
     }
 
-    /* Шапка и навигация */
     .header {
       position: sticky;
       top: 0;
@@ -104,7 +102,6 @@
       font-size: 17px;
       font-weight: 700;
       color: var(--text-main);
-      letter-spacing: -0.01em;
     }
 
     .top-actions {
@@ -138,12 +135,11 @@
       cursor: pointer;
     }
 
-    /* Вкладки систем */
     .tabs {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
-      padding: 4px 16px 12px;
+      padding: 4px 16px 10px;
       max-width: 720px;
       margin: 0 auto;
     }
@@ -157,19 +153,16 @@
       padding: 10px 4px;
       border-radius: 10px;
       cursor: pointer;
-      transition: all 0.15s ease;
     }
 
     .tab-btn.active {
       background: var(--primary);
       color: #ffffff;
       border-color: var(--primary);
-      box-shadow: 0 2px 6px rgba(30, 64, 175, 0.25);
     }
 
-    /* Строка поиска */
     .search-wrap {
-      padding: 0 16px 12px;
+      padding: 0 16px 8px;
       position: relative;
       max-width: 720px;
       margin: 0 auto;
@@ -185,7 +178,6 @@
       background: var(--bg);
       color: var(--text-main);
       outline: none;
-      transition: border-color 0.15s, background 0.15s;
     }
 
     .search-input:focus {
@@ -205,11 +197,40 @@
       height: 22px;
       border-radius: 50%;
       font-size: 14px;
-      line-height: 1;
       display: none;
       align-items: center;
       justify-content: center;
       cursor: pointer;
+    }
+
+    /* Быстрые теги блоков */
+    .chips-bar {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 2px 16px 10px;
+      max-width: 720px;
+      margin: 0 auto;
+      scrollbar-width: none;
+    }
+    .chips-bar::-webkit-scrollbar { display: none; }
+
+    .chip-btn {
+      flex-shrink: 0;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: #334155;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .chip-btn.active {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
     }
 
     .stats-bar {
@@ -232,7 +253,10 @@
       margin-right: 5px;
     }
 
-    /* Контейнер карточек */
+    .live-dot.offline {
+      background: #f59e0b;
+    }
+
     .container {
       padding: 10px 16px;
       display: flex;
@@ -242,7 +266,6 @@
       margin: 0 auto;
     }
 
-    /* Карточка отказа */
     .card {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -278,11 +301,6 @@
       cursor: pointer;
     }
 
-    .edit-btn:active {
-      background: var(--border);
-    }
-
-    /* Единый поток блоков внутри карточки */
     .blocks-list {
       display: flex;
       flex-direction: column;
@@ -296,10 +314,6 @@
       padding: 9px 12px;
       font-size: 14.5px;
       color: #1e293b;
-    }
-
-    .solution-variant-title {
-      font-weight: 500;
     }
 
     .inline-arrow {
@@ -346,6 +360,30 @@
       margin-right: 4px;
     }
 
+    .photos-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .photo-thumb {
+      width: 76px;
+      height: 76px;
+      object-fit: cover;
+      border-radius: 9px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+    }
+
+    .card-meta {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid #f1f5f9;
+      font-size: 11.5px;
+      color: var(--text-muted);
+    }
+
     mark {
       background: #fde047;
       color: #0f172a;
@@ -353,7 +391,6 @@
       border-radius: 3px;
     }
 
-    /* Плавающая кнопка добавления */
     .fab {
       position: fixed;
       bottom: 20px;
@@ -373,7 +410,6 @@
       z-index: 60;
     }
 
-    /* Модальное окно */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -396,17 +432,11 @@
       overflow-y: auto;
       border-radius: 20px 20px 0 0;
       padding: 20px 16px 28px;
-      box-shadow: 0 -4px 25px rgba(0,0,0,0.15);
     }
 
     @media (min-width: 640px) {
-      .modal-backdrop {
-        align-items: center;
-      }
-      .modal-sheet {
-        border-radius: 16px;
-        margin: 16px;
-      }
+      .modal-backdrop { align-items: center; }
+      .modal-sheet { border-radius: 16px; margin: 16px; }
     }
 
     .modal-header {
@@ -416,10 +446,7 @@
       margin-bottom: 16px;
     }
 
-    .modal-title {
-      font-size: 18px;
-      font-weight: 700;
-    }
+    .modal-title { font-size: 18px; font-weight: 700; }
 
     .close-modal {
       background: var(--bg);
@@ -432,9 +459,7 @@
       color: var(--text-muted);
     }
 
-    .form-group {
-      margin-bottom: 14px;
-    }
+    .form-group { margin-bottom: 14px; }
 
     .form-label {
       display: block;
@@ -455,9 +480,7 @@
       background: #ffffff;
     }
 
-    .form-control:focus {
-      border-color: var(--primary);
-    }
+    .form-control:focus { border-color: var(--primary); }
 
     .editor-block {
       background: var(--primary-light);
@@ -483,18 +506,12 @@
       font-size: 11.5px;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
       color: var(--primary);
     }
 
-    .editor-block.is-note .block-type-tag {
-      color: var(--accent-amber);
-    }
+    .editor-block.is-note .block-type-tag { color: var(--accent-amber); }
 
-    .block-controls {
-      display: flex;
-      gap: 4px;
-    }
+    .block-controls { display: flex; gap: 4px; }
 
     .btn-icon {
       background: #ffffff;
@@ -549,6 +566,26 @@
       padding-left: 10px;
     }
 
+    .photo-edit-item {
+      position: relative;
+      display: inline-block;
+    }
+
+    .photo-remove-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #dc2626;
+      color: #fff;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
     .btn-primary {
       width: 100%;
       background: var(--primary);
@@ -562,9 +599,7 @@
       margin-top: 8px;
     }
 
-    .btn-primary:disabled, .btn-delete-fault:disabled {
-      opacity: 0.6;
-    }
+    .btn-primary:disabled, .btn-delete-fault:disabled { opacity: 0.6; }
 
     .btn-delete-fault {
       width: 100%;
@@ -580,6 +615,25 @@
       display: none;
     }
 
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 200;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .lightbox.open { display: flex; }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 10px;
+    }
+
     .loader, .empty-state {
       text-align: center;
       padding: 40px 20px;
@@ -590,7 +644,6 @@
 </head>
 <body>
 
-  <!-- Экран входа -->
   <div id="authScreen" class="auth-screen">
     <div class="auth-card">
       <div class="auth-title">База отказов ПНК</div>
@@ -610,14 +663,13 @@
     </div>
   </div>
 
-  <!-- Основной интерфейс приложения -->
   <div id="mainApp" style="display: none;">
     <div class="header">
       <div class="top-bar">
         <div class="app-title">База отказов ПНК</div>
         <div class="top-actions">
           <div id="roleBadge" class="role-badge">Загрузка...</div>
-          <button id="logoutBtn" class="logout-btn" title="Выйти">Выйти</button>
+          <button id="logoutBtn" class="logout-btn">Выйти</button>
         </div>
       </div>
       <div class="tabs" id="tabsContainer"></div>
@@ -625,11 +677,12 @@
         <input type="text" id="searchInput" class="search-input" placeholder="Поиск по выбранной системе..." autocomplete="off">
         <button id="clearSearch" class="clear-search" title="Очистить">×</button>
       </div>
+      <div class="chips-bar" id="chipsContainer"></div>
     </div>
 
     <div class="stats-bar">
       <span id="statsCount">Загрузка данных...</span>
-      <span><span class="live-dot"></span><span id="userEmailLabel"></span></span>
+      <span><span id="liveDot" class="live-dot"></span><span id="syncStatusLabel"></span></span>
     </div>
 
     <div class="container" id="cardsContainer">
@@ -639,7 +692,6 @@
     <button id="fabAdd" class="fab">+ Добавить отказ</button>
   </div>
 
-  <!-- Модальное окно добавления / редактирования -->
   <div class="modal-backdrop" id="editorModal">
     <div class="modal-sheet">
       <div class="modal-header">
@@ -660,7 +712,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Способы устранения и примечания (меняйте порядок стрелками ↑ ↓)</label>
+        <label class="form-label">Способы устранения и примечания (меняйте порядок ↑ ↓)</label>
         <div id="blocksEditorList"></div>
         <div class="add-buttons-row">
           <button type="button" class="btn-small" id="addVariantBtn">+ Вариант устранения</button>
@@ -668,32 +720,45 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label class="form-label">Фотографии (схемы, разъёмы, колодки)</label>
+        <div id="photosEditorList" class="photos-row" style="margin-bottom:8px;"></div>
+        <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none;">
+        <button type="button" class="btn-small" id="uploadPhotoBtn">+ Прикрепить фото</button>
+      </div>
+
       <button type="button" class="btn-primary" id="saveFaultBtn">Сохранить в базу</button>
       <button type="button" class="btn-delete-fault" id="deleteFaultBtn">Удалить этот отказ</button>
     </div>
   </div>
 
+  <div id="lightbox" class="lightbox" onclick="this.classList.remove('open')">
+    <img id="lightboxImg" src="" alt="">
+  </div>
+
   <script>
     // =========================================================================
-    // ВСТАВЬТЕ СЮДА ВАШИ ДАННЫЕ ИЗ SUPABASE (Project Settings -> Data API / API Keys)
+    // ВСТАВЬТЕ СЮДА ВАШИ ДАННЫЕ ИЗ SUPABASE
     // =========================================================================
     const SUPABASE_URL = 'https://bjnrtoqawetgnimnffud.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
+    const CACHE_KEY = 'pnk_faults_cache_v1';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
       systems: ['КП1', 'КП2', 'КП3', 'ДИСС'],
       currentSystem: 'КП1',
+      activeChip: '',
       canEdit: false,
       userEmail: '',
-      faults: [] // Единый массив всех записей из таблицы faults
+      faults: [],
+      editPhotos: []
     };
 
     let realtimeChannel = null;
 
-    // --- Авторизация и проверка сессии ---
     async function checkSession() {
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user) {
@@ -729,7 +794,7 @@
       btn.textContent = 'Войти';
 
       if (error) {
-        showAuthScreen('Неверный логин или пароль');
+        showAuthScreen('Ошибка: ' + error.message);
         return;
       }
       if (data.user) {
@@ -747,14 +812,25 @@
       APP_STATE.userEmail = user.email;
       document.getElementById('authScreen').style.display = 'none';
       document.getElementById('mainApp').style.display = 'block';
-      document.getElementById('userEmailLabel').textContent = user.email;
 
-      // Проверяем роль пользователя в таблице user_roles
-      const { data: roleRow } = await sb
+      const { data: roleRow, error: roleErr } = await sb
         .from('user_roles')
         .select('role')
         .eq('email', user.email)
         .maybeSingle();
+
+      // Если нет сети, пробуем взять сохранённую роль и кэш
+      const cached = loadCache();
+      if (roleErr && cached) {
+        APP_STATE.canEdit = cached.canEdit || false;
+        APP_STATE.faults = cached.faults || [];
+        setSyncStatus(false, 'Офлайн-копия');
+        applyRoleBadge();
+        renderTabs();
+        renderChips();
+        renderCards();
+        return;
+      }
 
       if (!roleRow) {
         await sb.auth.signOut();
@@ -763,6 +839,13 @@
       }
 
       APP_STATE.canEdit = roleRow.role === 'editor';
+      applyRoleBadge();
+      renderTabs();
+      await loadAllFaults();
+      subscribeRealtime();
+    }
+
+    function applyRoleBadge() {
       const badge = document.getElementById('roleBadge');
       if (APP_STATE.canEdit) {
         badge.textContent = 'Редактор';
@@ -773,13 +856,33 @@
         badge.classList.add('readonly');
         document.getElementById('fabAdd').style.display = 'none';
       }
-
-      renderTabs();
-      await loadAllFaults();
-      subscribeRealtime();
     }
 
-    // --- Загрузка данных и автообновление в реальном времени ---
+    function setSyncStatus(isOnline, text) {
+      const dot = document.getElementById('liveDot');
+      const label = document.getElementById('syncStatusLabel');
+      dot.classList.toggle('offline', !isOnline);
+      label.textContent = text;
+    }
+
+    function saveCache() {
+      try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({
+          canEdit: APP_STATE.canEdit,
+          faults: APP_STATE.faults
+        }));
+      } catch (e) {}
+    }
+
+    function loadCache() {
+      try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
     async function loadAllFaults() {
       const { data, error } = await sb
         .from('faults')
@@ -787,12 +890,23 @@
         .order('id', { ascending: true });
 
       if (error) {
-        document.getElementById('cardsContainer').innerHTML =
-          `<div class="empty-state">Ошибка загрузки данных: ${escapeHtml(error.message)}</div>`;
+        const cached = loadCache();
+        if (cached && cached.faults) {
+          APP_STATE.faults = cached.faults;
+          setSyncStatus(false, 'Офлайн-копия');
+          renderChips();
+          renderCards();
+        } else {
+          document.getElementById('cardsContainer').innerHTML =
+            `<div class="empty-state">Ошибка загрузки: ${escapeHtml(error.message)}</div>`;
+        }
         return;
       }
 
       APP_STATE.faults = data || [];
+      saveCache();
+      setSyncStatus(true, APP_STATE.userEmail);
+      renderChips();
       renderCards();
     }
 
@@ -812,12 +926,14 @@
           } else if (payload.eventType === 'DELETE') {
             APP_STATE.faults = APP_STATE.faults.filter(f => f.id !== payload.old.id);
           }
+          saveCache();
+          renderChips();
           renderCards();
         })
         .subscribe();
     }
 
-    // --- Морфологический поиск ---
+    // --- Морфология ---
     function stemRu(word) {
       word = word.toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9-]/g, '');
       if (word.length < 4) return word;
@@ -859,6 +975,11 @@
     }
 
     function matchesQuery(item, query) {
+      if (APP_STATE.activeChip) {
+        const hayChip = normalizeText(`${item.symptom} ${item.solution || ''} ${item.note || ''}`);
+        if (!hayChip.includes(normalizeText(APP_STATE.activeChip))) return false;
+      }
+
       if (!query.trim()) return true;
       const cleanSol = (item.solution || '').replace(/\[ПРИМ\]/gi, ' ');
       const fullText = normalizeText(`${item.symptom} ${cleanSol} ${item.note || ''}`);
@@ -898,7 +1019,6 @@
         .replace(/"/g, '&quot;');
     }
 
-    // --- Разбор блоков карточки ---
     function parseCardBlocks(solutionText, legacyNoteText) {
       const blocks = [];
       let currentVariant = null;
@@ -912,29 +1032,16 @@
               blocks.push(currentVariant);
               currentVariant = null;
             }
-            blocks.push({
-              type: 'note',
-              text: line.replace(/^\[ПРИМ\]\s*/i, '')
-            });
+            blocks.push({ type: 'note', text: line.replace(/^\[ПРИМ\]\s*/i, '') });
           } else if (line.startsWith('*')) {
             if (currentVariant) blocks.push(currentVariant);
-            currentVariant = {
-              type: 'variant',
-              title: line.replace(/^\*+\s*/, ''),
-              branches: []
-            };
+            currentVariant = { type: 'variant', title: line.replace(/^\*+\s*/, ''), branches: [] };
           } else if (line.startsWith('->') || line.startsWith('→')) {
-            if (!currentVariant) {
-              currentVariant = { type: 'variant', title: '', branches: [] };
-            }
+            if (!currentVariant) currentVariant = { type: 'variant', title: '', branches: [] };
             currentVariant.branches.push(line.replace(/^(->|→)\s*/, ''));
           } else {
             if (currentVariant) blocks.push(currentVariant);
-            currentVariant = {
-              type: 'variant',
-              title: line,
-              branches: []
-            };
+            currentVariant = { type: 'variant', title: line, branches: [] };
           }
         });
 
@@ -943,17 +1050,64 @@
 
       if (legacyNoteText && legacyNoteText.trim()) {
         legacyNoteText.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(nLine => {
-          blocks.push({
-            type: 'note',
-            text: nLine.replace(/^\[ПРИМ\]\s*/i, '')
-          });
+          blocks.push({ type: 'note', text: nLine.replace(/^\[ПРИМ\]\s*/i, '') });
         });
       }
 
       return blocks;
     }
 
-    // --- Отрисовка интерфейса ---
+    function parsePhotos(photosStr) {
+      if (!photosStr) return [];
+      return photosStr.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function formatDateTime(isoStr) {
+      if (!isoStr) return '';
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    // --- Быстрые теги блоков ---
+    function renderChips() {
+      const container = document.getElementById('chipsContainer');
+      const items = APP_STATE.faults.filter(f => f.system === APP_STATE.currentSystem);
+      const counts = {};
+      const codeRegex = /\b[А-ЯЁA-Z]{1,4}\d{1,3}[-–][А-ЯЁA-Z0-9]+\b/g;
+
+      items.forEach(item => {
+        const text = `${item.symptom} ${item.solution || ''}`;
+        const matches = text.match(codeRegex) || [];
+        const uniqueInCard = [...new Set(matches.map(m => m.toUpperCase()))];
+        uniqueInCard.forEach(code => {
+          counts[code] = (counts[code] || 0) + 1;
+        });
+      });
+
+      const topCodes = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(x => x[0]);
+
+      if (!topCodes.length) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = topCodes.map(code => `
+        <button class="chip-btn ${APP_STATE.activeChip === code ? 'active' : ''}" onclick="toggleChip('${code}')">
+          ${code}
+        </button>
+      `).join('');
+    }
+
+    function toggleChip(code) {
+      APP_STATE.activeChip = APP_STATE.activeChip === code ? '' : code;
+      renderChips();
+      renderCards();
+    }
+
     function renderTabs() {
       const container = document.getElementById('tabsContainer');
       container.innerHTML = APP_STATE.systems.map(sys => `
@@ -965,8 +1119,15 @@
 
     function selectSystem(sys) {
       APP_STATE.currentSystem = sys;
+      APP_STATE.activeChip = '';
       renderTabs();
+      renderChips();
       renderCards();
+    }
+
+    function openLightbox(url) {
+      document.getElementById('lightboxImg').src = url;
+      document.getElementById('lightbox').classList.add('open');
     }
 
     function renderCards() {
@@ -975,9 +1136,9 @@
       const list = APP_STATE.faults.filter(item => item.system === APP_STATE.currentSystem);
       const filtered = list.filter(item => matchesQuery(item, query));
 
-      document.getElementById('statsCount').textContent = 
-        query.trim() 
-          ? `Найдено в ${APP_STATE.currentSystem}: ${filtered.length} из ${list.length}` 
+      document.getElementById('statsCount').textContent =
+        (query.trim() || APP_STATE.activeChip)
+          ? `Найдено в ${APP_STATE.currentSystem}: ${filtered.length} из ${list.length}`
           : `Всего в ${APP_STATE.currentSystem}: ${list.length}`;
 
       if (!filtered.length) {
@@ -987,6 +1148,7 @@
 
       container.innerHTML = filtered.map(item => {
         const blocks = parseCardBlocks(item.solution, item.note);
+        const photos = parsePhotos(item.photos);
 
         const blocksHtml = blocks.map(block => {
           if (block.type === 'note') {
@@ -1007,6 +1169,17 @@
           `;
         }).join('');
 
+        const photosHtml = photos.length
+          ? `<div class="photos-row">
+              ${photos.map(url => `<img class="photo-thumb" src="${escapeHtml(url)}" onclick="openLightbox('${escapeHtml(url)}')" loading="lazy">`).join('')}
+             </div>`
+          : '';
+
+        const dt = formatDateTime(item.updated_at);
+        const metaHtml = (item.updated_by || dt)
+          ? `<div class="card-meta">Обновлено: ${escapeHtml(dt)}${item.updated_by ? ` • ${escapeHtml(item.updated_by)}` : ''}</div>`
+          : '';
+
         const editBtnHtml = APP_STATE.canEdit
           ? `<button class="edit-btn" onclick="openEditor(${item.id})">Изменить</button>`
           : '';
@@ -1018,12 +1191,14 @@
               ${editBtnHtml}
             </div>
             <div class="blocks-list">${blocksHtml}</div>
+            ${photosHtml}
+            ${metaHtml}
           </div>
         `;
       }).join('');
     }
 
-    // --- Конструктор в модальном окне ---
+    // --- Редактор карточки ---
     function moveEditorBlock(btn, direction) {
       const block = btn.closest('.editor-block');
       const parent = block.parentElement;
@@ -1042,9 +1217,9 @@
         <div class="editor-block-header">
           <span class="block-type-tag">Способ устранения</span>
           <div class="block-controls">
-            <button type="button" class="btn-icon" title="Переместить выше" onclick="moveEditorBlock(this, -1)">↑</button>
-            <button type="button" class="btn-icon" title="Переместить ниже" onclick="moveEditorBlock(this, 1)">↓</button>
-            <button type="button" class="btn-icon btn-danger" title="Удалить" onclick="this.closest('.editor-block').remove()">✕</button>
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
+            <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
         <textarea class="form-control variant-title-input" rows="2" placeholder="Опишите способ устранения...">${escapeHtml(title)}</textarea>
@@ -1064,9 +1239,9 @@
         <div class="editor-block-header">
           <span class="block-type-tag">Примечание</span>
           <div class="block-controls">
-            <button type="button" class="btn-icon" title="Переместить выше" onclick="moveEditorBlock(this, -1)">↑</button>
-            <button type="button" class="btn-icon" title="Переместить ниже" onclick="moveEditorBlock(this, 1)">↓</button>
-            <button type="button" class="btn-icon btn-danger" title="Удалить" onclick="this.closest('.editor-block').remove()">✕</button>
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
+            <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
         <textarea class="form-control note-text-input" rows="2" placeholder="Текст примечания...">${escapeHtml(text)}</textarea>
@@ -1084,6 +1259,54 @@
       container.appendChild(row);
     }
 
+    function renderEditorPhotos() {
+      const list = document.getElementById('photosEditorList');
+      list.innerHTML = APP_STATE.editPhotos.map((url, idx) => `
+        <div class="photo-edit-item">
+          <img class="photo-thumb" src="${escapeHtml(url)}">
+          <button type="button" class="photo-remove-btn" onclick="removeEditorPhoto(${idx})">×</button>
+        </div>
+      `).join('');
+    }
+
+    function removeEditorPhoto(idx) {
+      APP_STATE.editPhotos.splice(idx, 1);
+      renderEditorPhotos();
+    }
+
+    document.getElementById('uploadPhotoBtn').onclick = () => {
+      document.getElementById('photoFileInput').click();
+    };
+
+    document.getElementById('photoFileInput').addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files || []);
+      if (!files.length) return;
+
+      const btn = document.getElementById('uploadPhotoBtn');
+      btn.disabled = true;
+      btn.textContent = 'Загрузка фото...';
+
+      for (const file of files) {
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        const filePath = `${APP_STATE.currentSystem}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+
+        const { error } = await sb.storage.from('fault-photos').upload(filePath, file, { upsert: false });
+        if (error) {
+          alert('Ошибка загрузки фото: ' + error.message);
+          continue;
+        }
+        const { data } = sb.storage.from('fault-photos').getPublicUrl(filePath);
+        if (data && data.publicUrl) {
+          APP_STATE.editPhotos.push(data.publicUrl);
+        }
+      }
+
+      btn.disabled = false;
+      btn.textContent = '+ Прикрепить фото';
+      e.target.value = '';
+      renderEditorPhotos();
+    });
+
     function openEditor(faultId = null) {
       const modal = document.getElementById('editorModal');
       const sysSelect = document.getElementById('editSystem');
@@ -1100,8 +1323,8 @@
         document.getElementById('editFaultId').value = faultId;
         document.getElementById('editSymptom').value = item.symptom;
         sysSelect.value = item.system;
-        sysSelect.disabled = false;
         deleteBtn.style.display = 'block';
+        APP_STATE.editPhotos = parsePhotos(item.photos);
 
         const parsedBlocks = parseCardBlocks(item.solution, item.note);
         if (parsedBlocks.length) {
@@ -1119,11 +1342,12 @@
         document.getElementById('modalTitle').textContent = 'Новый отказ';
         document.getElementById('editFaultId').value = '';
         document.getElementById('editSymptom').value = '';
-        sysSelect.disabled = false;
         deleteBtn.style.display = 'none';
+        APP_STATE.editPhotos = [];
         blocksList.appendChild(createVariantEditorBlock());
       }
 
+      renderEditorPhotos();
       modal.classList.add('open');
     }
 
@@ -1167,15 +1391,14 @@
             .filter(Boolean);
 
           if (title) {
-            const singleLineTitle = title.replace(/\r?\n+/g, ' ');
-            lines.push(`* ${singleLineTitle}`);
+            lines.push(`* ${title.replace(/\r?\n+/g, ' ')}`);
           }
           branches.forEach(b => lines.push(`-> ${b}`));
         }
       });
 
-      if (!lines.length) {
-        alert('Добавьте хотя бы один способ устранения или примечание');
+      if (!lines.length && !APP_STATE.editPhotos.length) {
+        alert('Добавьте хотя бы один способ устранения, примечание или фото');
         return;
       }
 
@@ -1184,7 +1407,10 @@
         system: document.getElementById('editSystem').value,
         symptom: symptom,
         solution: lines.join('\n'),
-        note: ''
+        note: '',
+        photos: APP_STATE.editPhotos.join('\n'),
+        updated_by: APP_STATE.userEmail,
+        updated_at: new Date().toISOString()
       };
 
       btn.disabled = true;
@@ -1205,7 +1431,6 @@
         return;
       }
 
-      // Мгновенно обновляем локальный список, не дожидаясь события Realtime
       if (faultId) {
         const idx = APP_STATE.faults.findIndex(f => f.id === Number(faultId));
         if (idx !== -1) APP_STATE.faults[idx] = res.data;
@@ -1213,7 +1438,9 @@
         APP_STATE.faults.push(res.data);
       }
 
+      saveCache();
       document.getElementById('editorModal').classList.remove('open');
+      renderChips();
       renderCards();
     };
 
@@ -1243,7 +1470,9 @@
       }
 
       APP_STATE.faults = APP_STATE.faults.filter(f => f.id !== Number(faultId));
+      saveCache();
       document.getElementById('editorModal').classList.remove('open');
+      renderChips();
       renderCards();
     };
 
