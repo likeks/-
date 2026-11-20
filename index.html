@@ -774,7 +774,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Добавить фото</label>
+        <label class="form-label">Добавить фотографии</label>
         <div id="photosEditorList" class="photos-row" style="margin-bottom:8px;"></div>
         <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none;">
         <button type="button" class="btn-small" id="uploadPhotoBtn">+ Прикрепить фото</button>
@@ -1172,6 +1172,26 @@
     function parsePhotos(photosStr) {
       if (!photosStr) return [];
       return photosStr.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function extractStoragePathFromUrl(url) {
+      if (!url) return '';
+      const marker = '/fault-photos/';
+      const idx = url.indexOf(marker);
+      if (idx === -1) return '';
+      return decodeURIComponent(url.slice(idx + marker.length).split('?')[0]);
+    }
+
+    async function deletePhotosFromStorage(urls) {
+      const paths = (urls || [])
+        .map(extractStoragePathFromUrl)
+        .filter(Boolean);
+      if (!paths.length) return;
+
+      const { error } = await sb.storage.from('fault-photos').remove(paths);
+      if (error) {
+        console.warn('Не удалось удалить файлы из fault-photos:', error.message);
+      }
     }
 
     function formatDateTime(isoStr) {
@@ -1676,6 +1696,10 @@
       }
 
       const faultId = document.getElementById('editFaultId').value;
+      const previousFault = faultId ? APP_STATE.faults.find(f => f.id === Number(faultId)) : null;
+      const previousPhotos = previousFault ? parsePhotos(previousFault.photos) : [];
+      const removedPhotos = previousPhotos.filter(url => !APP_STATE.editPhotos.includes(url));
+
       const record = {
         system: document.getElementById('editSystem').value,
         symptom: symptom,
@@ -1704,6 +1728,10 @@
         return;
       }
 
+      if (removedPhotos.length) {
+        await deletePhotosFromStorage(removedPhotos);
+      }
+
       if (faultId) {
         const idx = APP_STATE.faults.findIndex(f => f.id === Number(faultId));
         if (idx !== -1) APP_STATE.faults[idx] = res.data;
@@ -1725,6 +1753,9 @@
         return;
       }
 
+      const faultToDelete = APP_STATE.faults.find(f => f.id === Number(faultId));
+      const photosToDelete = faultToDelete ? parsePhotos(faultToDelete.photos) : [];
+
       const btn = this;
       const saveBtn = document.getElementById('saveFaultBtn');
       btn.disabled = true;
@@ -1740,6 +1771,10 @@
       if (error) {
         alert('Ошибка удаления: ' + error.message);
         return;
+      }
+
+      if (photosToDelete.length) {
+        await deletePhotosFromStorage(photosToDelete);
       }
 
       APP_STATE.faults = APP_STATE.faults.filter(f => f.id !== Number(faultId));
