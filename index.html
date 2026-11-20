@@ -774,7 +774,7 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Фотографии (схемы, разъёмы, колодки)</label>
+        <label class="form-label">Добавить фото</label>
         <div id="photosEditorList" class="photos-row" style="margin-bottom:8px;"></div>
         <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none;">
         <button type="button" class="btn-small" id="uploadPhotoBtn">+ Прикрепить фото</button>
@@ -1396,15 +1396,32 @@
       btn.disabled = true;
       btn.textContent = 'Загрузка фото...';
 
-      for (const file of files) {
-        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
-        const filePath = `${APP_STATE.currentSystem}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+      const safeFolder = String(APP_STATE.currentSystem || 'common')
+        .replace(/[^a-zA-Z0-9_-]/g, '') || 'common';
 
-        const { error } = await sb.storage.from('fault-photos').upload(filePath, file, { upsert: false });
+      for (const file of files) {
+        const rawMimeExt = (file.type && file.type.split('/')[1]) || '';
+        const cleanMimeExt = rawMimeExt.split(';')[0].replace(/[^a-z0-9]/gi, '').toLowerCase();
+        const rawNameExt = (file.name && file.name.includes('.') ? file.name.split('.').pop() : '')
+          .replace(/[^a-z0-9]/gi, '').toLowerCase();
+        const ext = (cleanMimeExt === 'jpeg' ? 'jpg' : cleanMimeExt) || rawNameExt || 'jpg';
+
+        const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const filePath = `${safeFolder}/${fileName}`;
+
+        const { error } = await sb.storage
+          .from('fault-photos')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: file.type || `image/${ext}`
+          });
+
         if (error) {
           alert('Ошибка загрузки фото: ' + error.message);
           continue;
         }
+
         const { data } = sb.storage.from('fault-photos').getPublicUrl(filePath);
         if (data && data.publicUrl) {
           APP_STATE.editPhotos.push(data.publicUrl);
