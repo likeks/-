@@ -33,6 +33,10 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    html, body {
+      overscroll-behavior: none;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg);
@@ -410,7 +414,7 @@
       display: none;
       align-items: flex-end;
       justify-content: center;
-      overscroll-behavior: contain;
+      overscroll-behavior: none;
     }
 
     .modal-backdrop.open {
@@ -423,6 +427,8 @@
       max-width: 640px;
       max-height: 92vh;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
       border-radius: 20px 20px 0 0;
       padding: 20px 16px 28px;
       transition: transform 0.18s ease-out;
@@ -779,11 +785,10 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Содержимое карточки</label>
         <div id="blocksEditorList"></div>
         <div class="add-buttons-row">
           <button type="button" class="btn-small entity-add" id="addEntityBtn">+ Сущность</button>
-          <button type="button" class="btn-small" id="addVariantBtn">+ Вариант устранения</button>
+          <button type="button" class="btn-small" id="addVariantBtn">+ Способ устранения</button>
           <button type="button" class="btn-small note-add" id="addNoteBtn">+ Примечание</button>
         </div>
       </div>
@@ -812,7 +817,7 @@
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
-    const CACHE_KEY = 'pnk_faults_cache_v5';
+    const CACHE_KEY = 'pnk_faults_cache_v6';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
@@ -1316,7 +1321,7 @@
           if (block.title) {
             lines.push(`* ${block.title.replace(/\r?\n+/g, ' ')}`);
           } else if (block.branches && block.branches.length) {
-            lines.push('* Вариант');
+            lines.push('* Способ устранения');
           }
           (block.branches || []).forEach(b => lines.push(`-> ${b}`));
         }
@@ -1491,7 +1496,7 @@
       div.dataset.type = 'variant';
       div.innerHTML = `
         <div class="editor-block-header">
-          <span class="block-type-tag">Вариант устранения</span>
+          <span class="block-type-tag">Способ устранения</span>
           <div class="block-controls">
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
@@ -1500,7 +1505,7 @@
         </div>
         <textarea class="form-control variant-title-input" rows="1">${escapeHtml(title)}</textarea>
         <div class="branches-container"></div>
-        <button type="button" class="btn-small" style="margin-top:6px; padding:5px 9px; font-size:12px;" onclick="addBranchInput(this.previousElementSibling)">+ Ветка</button>
+        <button type="button" class="btn-small" style="margin-top:6px; padding:5px 9px; font-size:12px;" onclick="addBranchInput(this.previousElementSibling)">+ Если-то</button>
       `;
       const branchesContainer = div.querySelector('.branches-container');
       branches.forEach(b => addBranchInput(branchesContainer, b));
@@ -1604,6 +1609,7 @@
       const modal = document.getElementById('editorModal');
       const sheet = modal.querySelector('.modal-sheet');
       sheet.style.transform = '';
+      sheet.scrollTop = 0;
       const sysSelect = document.getElementById('editSystem');
       const deleteBtn = document.getElementById('deleteFaultBtn');
       sysSelect.innerHTML = APP_STATE.systems.map(s => `<option value="${s}">${s}</option>`).join('');
@@ -1674,8 +1680,8 @@
 
     document.getElementById('fabAdd').onclick = () => openEditor(null);
 
-    // --- Закрытие окна редактирования свайпом от левого или правого края ---
-    (function initModalEdgeSwipe() {
+    // --- Блокировка прокрутки фона и закрытие окна свайпом от края ---
+    (function initModalScrollAndSwipe() {
       const backdrop = document.getElementById('editorModal');
       const sheet = backdrop.querySelector('.modal-sheet');
       const MIN_EDGE = 16;
@@ -1684,9 +1690,17 @@
 
       let startX = 0;
       let startY = 0;
+      let lastY = 0;
       let deltaX = 0;
       let isEdgeSwipe = false;
       let isDecided = false;
+
+      backdrop.addEventListener('touchmove', (e) => {
+        if (!backdrop.classList.contains('open')) return;
+        if (!sheet.contains(e.target)) {
+          if (e.cancelable) e.preventDefault();
+        }
+      }, { passive: false });
 
       sheet.addEventListener('touchstart', (e) => {
         if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
@@ -1695,38 +1709,43 @@
         const nearLeft = touch.clientX >= MIN_EDGE && touch.clientX <= MAX_EDGE;
         const nearRight = touch.clientX >= vw - MAX_EDGE && touch.clientX <= vw - MIN_EDGE;
 
-        if (!nearLeft && !nearRight) {
-          isEdgeSwipe = false;
-          return;
-        }
-
         startX = touch.clientX;
         startY = touch.clientY;
+        lastY = touch.clientY;
         deltaX = 0;
-        isEdgeSwipe = true;
+        isEdgeSwipe = nearLeft || nearRight;
         isDecided = false;
       }, { passive: true });
 
       sheet.addEventListener('touchmove', (e) => {
-        if (!isEdgeSwipe || e.touches.length !== 1) return;
+        if (!backdrop.classList.contains('open') || e.touches.length !== 1) return;
         const touch = e.touches[0];
-        deltaX = touch.clientX - startX;
-        const deltaY = touch.clientY - startY;
+        const currentDeltaX = touch.clientX - startX;
+        const currentDeltaY = touch.clientY - startY;
+        const stepY = touch.clientY - lastY;
+        lastY = touch.clientY;
 
-        if (!isDecided) {
-          if (Math.abs(deltaX) < 10 && Math.abs(deltaY) < 10) return;
+        if (!isDecided && (Math.abs(currentDeltaX) >= 10 || Math.abs(currentDeltaY) >= 10)) {
           isDecided = true;
-          if (Math.abs(deltaY) > Math.abs(deltaX) * 1.15) {
+          if (isEdgeSwipe && Math.abs(currentDeltaX) > Math.abs(currentDeltaY) * 1.15) {
+            sheet.classList.add('dragging');
+          } else {
             isEdgeSwipe = false;
-            return;
           }
-          sheet.classList.add('dragging');
         }
 
-        if (e.cancelable) {
-          e.preventDefault();
+        if (isEdgeSwipe && sheet.classList.contains('dragging')) {
+          deltaX = currentDeltaX;
+          if (e.cancelable) e.preventDefault();
+          sheet.style.transform = `translateX(${deltaX}px)`;
+          return;
         }
-        sheet.style.transform = `translateX(${deltaX}px)`;
+
+        const atTop = sheet.scrollTop <= 0;
+        const atBottom = sheet.scrollTop + sheet.clientHeight >= sheet.scrollHeight - 1;
+        if ((atTop && stepY > 0) || (atBottom && stepY < 0)) {
+          if (e.cancelable) e.preventDefault();
+        }
       }, { passive: false });
 
       function finishSwipe() {
