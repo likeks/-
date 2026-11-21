@@ -316,66 +316,6 @@
       color: #1e293b;
     }
 
-    .variant-top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 10px;
-    }
-
-    .solution-variant-title {
-      flex: 1;
-    }
-
-    .vote-box {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
-      background: #ffffff;
-      border: 1px solid var(--primary-border);
-      border-radius: 8px;
-      padding: 2px 5px;
-    }
-
-    .vote-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-size: 12px;
-      font-weight: 700;
-      padding: 2px 4px;
-      border-radius: 5px;
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .vote-btn:hover:not(:disabled) {
-      background: var(--primary-light);
-      color: var(--primary);
-    }
-
-    .vote-btn:disabled {
-      opacity: 0.45;
-      cursor: default;
-    }
-
-    .vote-score {
-      font-size: 12px;
-      font-weight: 700;
-      min-width: 18px;
-      text-align: center;
-      color: #334155;
-    }
-
-    .vote-score.positive {
-      color: #15803d;
-    }
-
-    .vote-score.negative {
-      color: #b91c1c;
-    }
-
     .inline-arrow {
       color: var(--primary);
       font-weight: 700;
@@ -831,25 +771,25 @@
 
       <div class="form-group">
         <label class="form-label">Внешнее проявление отказа</label>
-        <textarea id="editSymptom" class="form-control" rows="2" placeholder="Например: Горит предохранитель на УК..."></textarea>
+        <textarea id="editSymptom" class="form-control" rows="2"></textarea>
         <div id="similarBox" class="similar-box">
-          <div class="similar-title">Найдены похожие отказы в этой системе — возможно, стоит дополнить существующую карточку:</div>
+          <div class="similar-title">Похожие отказы в этой системе:</div>
           <div id="similarList"></div>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Сущность отказа, способы устранения и примечания (меняйте порядок ↑ ↓)</label>
+        <label class="form-label">Содержимое карточки</label>
         <div id="blocksEditorList"></div>
         <div class="add-buttons-row">
-          <button type="button" class="btn-small entity-add" id="addEntityBtn">+ Сущность отказа</button>
+          <button type="button" class="btn-small entity-add" id="addEntityBtn">+ Сущность</button>
           <button type="button" class="btn-small" id="addVariantBtn">+ Вариант устранения</button>
           <button type="button" class="btn-small note-add" id="addNoteBtn">+ Примечание</button>
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Добавить фотографии</label>
+        <label class="form-label">Фотографии</label>
         <div id="photosEditorList" class="photos-row" style="margin-bottom:8px;"></div>
         <input type="file" id="photoFileInput" accept="image/*" multiple style="display:none;">
         <button type="button" class="btn-small" id="uploadPhotoBtn">+ Прикрепить фото</button>
@@ -872,7 +812,7 @@
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
-    const CACHE_KEY = 'pnk_faults_cache_v4';
+    const CACHE_KEY = 'pnk_faults_cache_v5';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
@@ -887,6 +827,10 @@
     };
 
     let realtimeChannel = null;
+
+    function scrollListToTop() {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+    }
 
     function autoResizeTextarea(el) {
       if (!el || el.tagName !== 'TEXTAREA') return;
@@ -1084,6 +1028,21 @@
       }
     }
 
+    function getFaultTimestamp(item) {
+      const raw = item.updated_at || item.created_at || '';
+      const ts = raw ? Date.parse(raw) : NaN;
+      if (!isNaN(ts)) return ts;
+      return Number(item.id) || 0;
+    }
+
+    function sortFaultsNewestFirst(items) {
+      return (items || []).slice().sort((a, b) => {
+        const diff = getFaultTimestamp(b) - getFaultTimestamp(a);
+        if (diff !== 0) return diff;
+        return (Number(b.id) || 0) - (Number(a.id) || 0);
+      });
+    }
+
     async function loadAllFaults() {
       const { data, error } = await sb
         .from('faults')
@@ -1266,7 +1225,7 @@
       listEl.innerHTML = candidates.map(c => `
         <div class="similar-item">
           <div class="similar-text">${escapeHtml(c.item.symptom)}</div>
-          <button type="button" class="similar-open-btn" onclick="openEditor(${c.item.id})">Открыть и дополнить</button>
+          <button type="button" class="similar-open-btn" onclick="openEditor(${c.item.id})">Открыть</button>
         </div>
       `).join('');
 
@@ -1276,19 +1235,13 @@
     document.getElementById('editSymptom').addEventListener('input', checkSimilarFaults);
     document.getElementById('editSystem').addEventListener('change', checkSimilarFaults);
 
-    function extractRatingFromText(raw) {
-      let rating = 0;
-      const cleaned = String(raw || '').replace(/\s*\[Р:(-?\d+)\]\s*$/i, (_, num) => {
-        rating = parseInt(num, 10) || 0;
-        return '';
-      }).trim();
-      return { text: cleaned, rating };
+    function stripLegacyRating(raw) {
+      return String(raw || '').replace(/\s*\[Р:-?\d+\]\s*$/i, '').trim();
     }
 
     function parseCardBlocks(solutionText, legacyNoteText) {
       const blocks = [];
       let currentVariant = null;
-      let variantCounter = 0;
 
       if (solutionText) {
         const lines = solutionText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1308,34 +1261,25 @@
             blocks.push({ type: 'entity', text: line.replace(/^\[СУЩ\]\s*/i, '') });
           } else if (line.startsWith('*')) {
             if (currentVariant) blocks.push(currentVariant);
-            const rawTitle = line.replace(/^\*+\s*/, '');
-            const parsedTitle = extractRatingFromText(rawTitle);
             currentVariant = {
               type: 'variant',
-              variantIndex: variantCounter++,
-              title: parsedTitle.text,
-              rating: parsedTitle.rating,
+              title: stripLegacyRating(line.replace(/^\*+\s*/, '')),
               branches: []
             };
           } else if (line.startsWith('->') || line.startsWith('→')) {
             if (!currentVariant) {
               currentVariant = {
                 type: 'variant',
-                variantIndex: variantCounter++,
                 title: '',
-                rating: 0,
                 branches: []
               };
             }
             currentVariant.branches.push(line.replace(/^(->|→)\s*/, ''));
           } else {
             if (currentVariant) blocks.push(currentVariant);
-            const parsedLine = extractRatingFromText(line);
             currentVariant = {
               type: 'variant',
-              variantIndex: variantCounter++,
-              title: parsedLine.text,
-              rating: parsedLine.rating,
+              title: stripLegacyRating(line),
               branches: []
             };
           }
@@ -1369,46 +1313,15 @@
             });
           }
         } else {
-          const ratingSuffix = block.rating ? ` [Р:${block.rating}]` : '';
           if (block.title) {
-            lines.push(`* ${block.title.replace(/\r?\n+/g, ' ')}${ratingSuffix}`);
+            lines.push(`* ${block.title.replace(/\r?\n+/g, ' ')}`);
           } else if (block.branches && block.branches.length) {
-            lines.push(`* Вариант${ratingSuffix}`);
+            lines.push('* Вариант');
           }
           (block.branches || []).forEach(b => lines.push(`-> ${b}`));
         }
       });
       return lines.join('\n');
-    }
-
-    async function voteVariant(faultId, targetVariantIndex, delta) {
-      if (!APP_STATE.canEdit) return;
-      const item = APP_STATE.faults.find(f => f.id === faultId);
-      if (!item) return;
-
-      const blocks = parseCardBlocks(item.solution, item.note);
-      const targetBlock = blocks.find(b => b.type === 'variant' && b.variantIndex === targetVariantIndex);
-      if (!targetBlock) return;
-
-      targetBlock.rating = (targetBlock.rating || 0) + delta;
-      const newSolution = serializeBlocksToSolution(blocks);
-
-      const { data, error } = await sb
-        .from('faults')
-        .update({ solution: newSolution })
-        .eq('id', faultId)
-        .select()
-        .single();
-
-      if (error) {
-        alert('Не удалось сохранить оценку: ' + error.message);
-        return;
-      }
-
-      const idx = APP_STATE.faults.findIndex(f => f.id === faultId);
-      if (idx !== -1) APP_STATE.faults[idx] = data;
-      saveCache();
-      renderCards();
     }
 
     function parsePhotos(photosStr) {
@@ -1460,6 +1373,7 @@
       if (clearBtn) clearBtn.style.display = 'none';
       renderTabs();
       renderCards();
+      scrollListToTop();
     }
 
     function openLightbox(url) {
@@ -1467,15 +1381,12 @@
       document.getElementById('lightbox').classList.add('open');
     }
 
-    function formatScoreText(rating) {
-      if (rating > 0) return `+${rating}`;
-      return `${rating || 0}`;
-    }
-
     function renderCards() {
       const container = document.getElementById('cardsContainer');
       const query = document.getElementById('searchInput').value;
-      const list = APP_STATE.faults.filter(item => item.system === APP_STATE.currentSystem);
+      const list = sortFaultsNewestFirst(
+        APP_STATE.faults.filter(item => item.system === APP_STATE.currentSystem)
+      );
       const filtered = list.filter(item => matchesQuery(item, query));
 
       document.getElementById('statsCount').textContent =
@@ -1490,24 +1401,11 @@
 
       container.innerHTML = filtered.map(item => {
         const blocks = parseCardBlocks(item.solution, item.note);
-        const sortedVariants = blocks
-          .filter(b => b.type === 'variant')
-          .slice()
-          .sort((a, b) => (b.rating || 0) - (a.rating || 0) || a.variantIndex - b.variantIndex);
-
-        let variantCursor = 0;
-        const displayBlocks = blocks.map(block => {
-          if (block.type === 'variant') {
-            return sortedVariants[variantCursor++];
-          }
-          return block;
-        });
-
         const photos = parsePhotos(item.photos);
 
-        const blocksHtml = displayBlocks.map(block => {
+        const blocksHtml = blocks.map(block => {
           if (block.type === 'entity') {
-            return `<div class="entity-box"><span class="entity-label">Сущность отказа:</span>${highlightText(block.text, query)}</div>`;
+            return `<div class="entity-box"><span class="entity-label">Сущность:</span>${highlightText(block.text, query)}</div>`;
           }
 
           if (block.type === 'note') {
@@ -1520,19 +1418,9 @@
                </div>`
             : '';
 
-          const scoreClass = block.rating > 0 ? 'positive' : (block.rating < 0 ? 'negative' : '');
-          const disabledAttr = APP_STATE.canEdit ? '' : 'disabled';
-
           return `
             <div class="solution-variant">
-              <div class="variant-top-row">
-                ${block.title ? `<div class="solution-variant-title">${highlightText(block.title, query)}</div>` : '<div class="solution-variant-title"></div>'}
-                <div class="vote-box" title="Рейтинг способа устранения">
-                  <button type="button" class="vote-btn" ${disabledAttr} onclick="voteVariant(${item.id}, ${block.variantIndex}, 1)" title="Нравится">▲</button>
-                  <span class="vote-score ${scoreClass}">${formatScoreText(block.rating)}</span>
-                  <button type="button" class="vote-btn" ${disabledAttr} onclick="voteVariant(${item.id}, ${block.variantIndex}, -1)" title="Не нравится">▼</button>
-                </div>
-              </div>
+              ${block.title ? `<div class="solution-variant-title">${highlightText(block.title, query)}</div>` : ''}
               ${branchesHtml}
             </div>
           `;
@@ -1585,35 +1473,34 @@
       div.dataset.type = 'entity';
       div.innerHTML = `
         <div class="editor-block-header">
-          <span class="block-type-tag">Сущность отказа</span>
+          <span class="block-type-tag">Сущность:</span>
           <div class="block-controls">
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
             <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
-        <textarea class="form-control entity-text-input" rows="1" placeholder="Например: обрыв цепи питания, неисправность канала...">${escapeHtml(text)}</textarea>
+        <textarea class="form-control entity-text-input" rows="1">${escapeHtml(text)}</textarea>
       `;
       return div;
     }
 
-    function createVariantEditorBlock(title = '', branches = [], rating = 0) {
+    function createVariantEditorBlock(title = '', branches = []) {
       const div = document.createElement('div');
       div.className = 'editor-block';
       div.dataset.type = 'variant';
-      div.dataset.rating = String(rating || 0);
       div.innerHTML = `
         <div class="editor-block-header">
-          <span class="block-type-tag">Способ устранения (рейтинг: ${formatScoreText(rating || 0)})</span>
+          <span class="block-type-tag">Вариант устранения</span>
           <div class="block-controls">
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
             <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
-        <textarea class="form-control variant-title-input" rows="1" placeholder="Опишите способ устранения...">${escapeHtml(title)}</textarea>
+        <textarea class="form-control variant-title-input" rows="1">${escapeHtml(title)}</textarea>
         <div class="branches-container"></div>
-        <button type="button" class="btn-small" style="margin-top:6px; padding:5px 9px; font-size:12px;" onclick="addBranchInput(this.previousElementSibling)">+ Ветка (Если → То)</button>
+        <button type="button" class="btn-small" style="margin-top:6px; padding:5px 9px; font-size:12px;" onclick="addBranchInput(this.previousElementSibling)">+ Ветка</button>
       `;
       const branchesContainer = div.querySelector('.branches-container');
       branches.forEach(b => addBranchInput(branchesContainer, b));
@@ -1633,7 +1520,7 @@
             <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
           </div>
         </div>
-        <textarea class="form-control note-text-input" rows="1" placeholder="Текст примечания...">${escapeHtml(text)}</textarea>
+        <textarea class="form-control note-text-input" rows="1">${escapeHtml(text)}</textarea>
       `;
       return div;
     }
@@ -1642,7 +1529,7 @@
       const row = document.createElement('div');
       row.className = 'branch-editor-row';
       row.innerHTML = `
-        <input type="text" class="form-control branch-input" style="font-size:13.5px; padding:7px 10px;" placeholder="Подпункт ветвления..." value="${escapeHtml(text)}">
+        <input type="text" class="form-control branch-input" style="font-size:13.5px; padding:7px 10px;" value="${escapeHtml(text)}">
         <button type="button" class="btn-icon btn-danger" onclick="this.parentElement.remove()">✕</button>
       `;
       container.appendChild(row);
@@ -1743,7 +1630,7 @@
             } else if (b.type === 'note') {
               blocksList.appendChild(createNoteEditorBlock(b.text));
             } else {
-              blocksList.appendChild(createVariantEditorBlock(b.title, b.branches, b.rating));
+              blocksList.appendChild(createVariantEditorBlock(b.title, b.branches));
             }
           });
         } else {
@@ -1893,10 +1780,9 @@
           const branches = Array.from(block.querySelectorAll('.branch-input'))
             .map(inp => inp.value.trim())
             .filter(Boolean);
-          const rating = parseInt(block.dataset.rating || '0', 10) || 0;
 
           if (title || branches.length) {
-            serializedBlocks.push({ type: 'variant', title, branches, rating });
+            serializedBlocks.push({ type: 'variant', title, branches });
           }
         }
       });
@@ -1904,7 +1790,7 @@
       const solutionStr = serializeBlocksToSolution(serializedBlocks);
 
       if (!solutionStr.trim() && !APP_STATE.editPhotos.length) {
-        alert('Добавьте хотя бы сущность отказа, способ устранения, примечание или фото');
+        alert('Добавьте хотя бы сущность, способ устранения, примечание или фото');
         return;
       }
 
@@ -2001,6 +1887,7 @@
     searchInput.addEventListener('input', () => {
       clearSearch.style.display = searchInput.value ? 'flex' : 'none';
       renderCards();
+      scrollListToTop();
     });
 
     clearSearch.addEventListener('click', () => {
@@ -2008,6 +1895,7 @@
       clearSearch.style.display = 'none';
       renderCards();
       searchInput.focus();
+      scrollListToTop();
     });
 
     checkSession();
