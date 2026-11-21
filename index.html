@@ -172,7 +172,7 @@
     }
 
     .search-wrap {
-      padding: 0 16px 8px;
+      padding: 0 16px 10px;
       position: relative;
       max-width: 720px;
       margin: 0 auto;
@@ -199,7 +199,7 @@
       position: absolute;
       right: 24px;
       top: 50%;
-      transform: translateY(-62%);
+      transform: translateY(-55%);
       background: #cbd5e1;
       color: #ffffff;
       border: none;
@@ -211,35 +211,6 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-    }
-
-    .chips-bar {
-      display: flex;
-      gap: 6px;
-      overflow-x: auto;
-      padding: 2px 16px 10px;
-      max-width: 720px;
-      margin: 0 auto;
-      scrollbar-width: none;
-    }
-    .chips-bar::-webkit-scrollbar { display: none; }
-
-    .chip-btn {
-      flex-shrink: 0;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      color: #334155;
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 10px;
-      border-radius: 20px;
-      cursor: pointer;
-    }
-
-    .chip-btn.active {
-      background: var(--primary-light);
-      border-color: var(--primary);
-      color: var(--primary);
     }
 
     .stats-bar {
@@ -343,6 +314,66 @@
       padding: 9px 12px;
       font-size: 14.5px;
       color: #1e293b;
+    }
+
+    .variant-top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+    }
+
+    .solution-variant-title {
+      flex: 1;
+    }
+
+    .vote-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+      background: #ffffff;
+      border: 1px solid var(--primary-border);
+      border-radius: 8px;
+      padding: 2px 5px;
+    }
+
+    .vote-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 5px;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .vote-btn:hover:not(:disabled) {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .vote-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    .vote-score {
+      font-size: 12px;
+      font-weight: 700;
+      min-width: 18px;
+      text-align: center;
+      color: #334155;
+    }
+
+    .vote-score.positive {
+      color: #15803d;
+    }
+
+    .vote-score.negative {
+      color: #b91c1c;
     }
 
     .inline-arrow {
@@ -770,7 +801,6 @@
         <input type="text" id="searchInput" class="search-input" placeholder="Поиск по выбранной системе..." autocomplete="off">
         <button id="clearSearch" class="clear-search" title="Очистить">×</button>
       </div>
-      <div class="chips-bar" id="chipsContainer" title="Нажмите на код блока, чтобы отфильтровать карточки"></div>
     </div>
 
     <div class="stats-bar">
@@ -842,13 +872,12 @@
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
-    const CACHE_KEY = 'pnk_faults_cache_v3';
+    const CACHE_KEY = 'pnk_faults_cache_v4';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
       systems: ['КП1', 'КП2', 'КП3', 'ДИСС', 'С3М', 'МСН'],
       currentSystem: 'КП1',
-      activeChip: '',
       canEdit: false,
       userEmail: '',
       userName: '',
@@ -912,7 +941,6 @@
       document.getElementById('mainApp').style.display = 'block';
       applyRoleBadge();
       renderTabs();
-      renderChips();
       renderCards();
     }
 
@@ -1068,7 +1096,6 @@
           APP_STATE.faults = cached.faults;
           APP_STATE.roleNames = cached.roleNames || {};
           setSyncStatus(false, 'Офлайн-копия');
-          renderChips();
           renderCards();
         } else {
           document.getElementById('cardsContainer').innerHTML =
@@ -1080,7 +1107,6 @@
       APP_STATE.faults = data || [];
       saveCache();
       setSyncStatus(true, APP_STATE.userName || APP_STATE.userEmail);
-      renderChips();
       renderCards();
     }
 
@@ -1101,7 +1127,6 @@
             APP_STATE.faults = APP_STATE.faults.filter(f => f.id !== payload.old.id);
           }
           saveCache();
-          renderChips();
           renderCards();
         })
         .subscribe();
@@ -1148,13 +1173,11 @@
     }
 
     function matchesQuery(item, query) {
-      if (APP_STATE.activeChip) {
-        const hayChip = normalizeText(`${item.symptom} ${item.solution || ''} ${item.note || ''}`);
-        if (!hayChip.includes(normalizeText(APP_STATE.activeChip))) return false;
-      }
-
       if (!query.trim()) return true;
-      const cleanSol = (item.solution || '').replace(/\[ПРИМ\]/gi, ' ').replace(/\[СУЩ\]/gi, ' ');
+      const cleanSol = (item.solution || '')
+        .replace(/\[ПРИМ\]/gi, ' ')
+        .replace(/\[СУЩ\]/gi, ' ')
+        .replace(/\[Р:-?\d+\]/gi, ' ');
       const fullText = normalizeText(`${item.symptom} ${cleanSol} ${item.note || ''}`);
       const textWords = fullText.split(/[^а-яa-z0-9-]+/).filter(Boolean);
       const textStems = textWords.map(stemRu);
@@ -1253,9 +1276,19 @@
     document.getElementById('editSymptom').addEventListener('input', checkSimilarFaults);
     document.getElementById('editSystem').addEventListener('change', checkSimilarFaults);
 
+    function extractRatingFromText(raw) {
+      let rating = 0;
+      const cleaned = String(raw || '').replace(/\s*\[Р:(-?\d+)\]\s*$/i, (_, num) => {
+        rating = parseInt(num, 10) || 0;
+        return '';
+      }).trim();
+      return { text: cleaned, rating };
+    }
+
     function parseCardBlocks(solutionText, legacyNoteText) {
       const blocks = [];
       let currentVariant = null;
+      let variantCounter = 0;
 
       if (solutionText) {
         const lines = solutionText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1275,13 +1308,36 @@
             blocks.push({ type: 'entity', text: line.replace(/^\[СУЩ\]\s*/i, '') });
           } else if (line.startsWith('*')) {
             if (currentVariant) blocks.push(currentVariant);
-            currentVariant = { type: 'variant', title: line.replace(/^\*+\s*/, ''), branches: [] };
+            const rawTitle = line.replace(/^\*+\s*/, '');
+            const parsedTitle = extractRatingFromText(rawTitle);
+            currentVariant = {
+              type: 'variant',
+              variantIndex: variantCounter++,
+              title: parsedTitle.text,
+              rating: parsedTitle.rating,
+              branches: []
+            };
           } else if (line.startsWith('->') || line.startsWith('→')) {
-            if (!currentVariant) currentVariant = { type: 'variant', title: '', branches: [] };
+            if (!currentVariant) {
+              currentVariant = {
+                type: 'variant',
+                variantIndex: variantCounter++,
+                title: '',
+                rating: 0,
+                branches: []
+              };
+            }
             currentVariant.branches.push(line.replace(/^(->|→)\s*/, ''));
           } else {
             if (currentVariant) blocks.push(currentVariant);
-            currentVariant = { type: 'variant', title: line, branches: [] };
+            const parsedLine = extractRatingFromText(line);
+            currentVariant = {
+              type: 'variant',
+              variantIndex: variantCounter++,
+              title: parsedLine.text,
+              rating: parsedLine.rating,
+              branches: []
+            };
           }
         });
 
@@ -1295,6 +1351,64 @@
       }
 
       return blocks;
+    }
+
+    function serializeBlocksToSolution(blocks) {
+      const lines = [];
+      blocks.forEach(block => {
+        if (block.type === 'entity') {
+          if (block.text) {
+            block.text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+              lines.push(`[СУЩ] ${line}`);
+            });
+          }
+        } else if (block.type === 'note') {
+          if (block.text) {
+            block.text.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+              lines.push(`[ПРИМ] ${line}`);
+            });
+          }
+        } else {
+          const ratingSuffix = block.rating ? ` [Р:${block.rating}]` : '';
+          if (block.title) {
+            lines.push(`* ${block.title.replace(/\r?\n+/g, ' ')}${ratingSuffix}`);
+          } else if (block.branches && block.branches.length) {
+            lines.push(`* Вариант${ratingSuffix}`);
+          }
+          (block.branches || []).forEach(b => lines.push(`-> ${b}`));
+        }
+      });
+      return lines.join('\n');
+    }
+
+    async function voteVariant(faultId, targetVariantIndex, delta) {
+      if (!APP_STATE.canEdit) return;
+      const item = APP_STATE.faults.find(f => f.id === faultId);
+      if (!item) return;
+
+      const blocks = parseCardBlocks(item.solution, item.note);
+      const targetBlock = blocks.find(b => b.type === 'variant' && b.variantIndex === targetVariantIndex);
+      if (!targetBlock) return;
+
+      targetBlock.rating = (targetBlock.rating || 0) + delta;
+      const newSolution = serializeBlocksToSolution(blocks);
+
+      const { data, error } = await sb
+        .from('faults')
+        .update({ solution: newSolution })
+        .eq('id', faultId)
+        .select()
+        .single();
+
+      if (error) {
+        alert('Не удалось сохранить оценку: ' + error.message);
+        return;
+      }
+
+      const idx = APP_STATE.faults.findIndex(f => f.id === faultId);
+      if (idx !== -1) APP_STATE.faults[idx] = data;
+      saveCache();
+      renderCards();
     }
 
     function parsePhotos(photosStr) {
@@ -1329,44 +1443,6 @@
       return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
     }
 
-    function renderChips() {
-      const container = document.getElementById('chipsContainer');
-      const items = APP_STATE.faults.filter(f => f.system === APP_STATE.currentSystem);
-      const counts = {};
-      const codeRegex = /\b[А-ЯЁA-Z]{1,4}\d{1,3}[-–][А-ЯЁA-Z0-9]+\b/g;
-
-      items.forEach(item => {
-        const text = `${item.symptom} ${item.solution || ''}`;
-        const matches = text.match(codeRegex) || [];
-        const uniqueInCard = [...new Set(matches.map(m => m.toUpperCase()))];
-        uniqueInCard.forEach(code => {
-          counts[code] = (counts[code] || 0) + 1;
-        });
-      });
-
-      const topCodes = Object.entries(counts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 8)
-        .map(x => x[0]);
-
-      if (!topCodes.length) {
-        container.innerHTML = '';
-        return;
-      }
-
-      container.innerHTML = topCodes.map(code => `
-        <button class="chip-btn ${APP_STATE.activeChip === code ? 'active' : ''}" onclick="toggleChip('${code}')">
-          ${code}
-        </button>
-      `).join('');
-    }
-
-    function toggleChip(code) {
-      APP_STATE.activeChip = APP_STATE.activeChip === code ? '' : code;
-      renderChips();
-      renderCards();
-    }
-
     function renderTabs() {
       const container = document.getElementById('tabsContainer');
       container.innerHTML = APP_STATE.systems.map(sys => `
@@ -1378,19 +1454,22 @@
 
     function selectSystem(sys) {
       APP_STATE.currentSystem = sys;
-      APP_STATE.activeChip = '';
       const searchEl = document.getElementById('searchInput');
       const clearBtn = document.getElementById('clearSearch');
       if (searchEl) searchEl.value = '';
       if (clearBtn) clearBtn.style.display = 'none';
       renderTabs();
-      renderChips();
       renderCards();
     }
 
     function openLightbox(url) {
       document.getElementById('lightboxImg').src = url;
       document.getElementById('lightbox').classList.add('open');
+    }
+
+    function formatScoreText(rating) {
+      if (rating > 0) return `+${rating}`;
+      return `${rating || 0}`;
     }
 
     function renderCards() {
@@ -1400,7 +1479,7 @@
       const filtered = list.filter(item => matchesQuery(item, query));
 
       document.getElementById('statsCount').textContent =
-        (query.trim() || APP_STATE.activeChip)
+        query.trim()
           ? `Найдено в ${APP_STATE.currentSystem}: ${filtered.length} из ${list.length}`
           : `Всего в ${APP_STATE.currentSystem}: ${list.length}`;
 
@@ -1411,9 +1490,22 @@
 
       container.innerHTML = filtered.map(item => {
         const blocks = parseCardBlocks(item.solution, item.note);
+        const sortedVariants = blocks
+          .filter(b => b.type === 'variant')
+          .slice()
+          .sort((a, b) => (b.rating || 0) - (a.rating || 0) || a.variantIndex - b.variantIndex);
+
+        let variantCursor = 0;
+        const displayBlocks = blocks.map(block => {
+          if (block.type === 'variant') {
+            return sortedVariants[variantCursor++];
+          }
+          return block;
+        });
+
         const photos = parsePhotos(item.photos);
 
-        const blocksHtml = blocks.map(block => {
+        const blocksHtml = displayBlocks.map(block => {
           if (block.type === 'entity') {
             return `<div class="entity-box"><span class="entity-label">Сущность отказа:</span>${highlightText(block.text, query)}</div>`;
           }
@@ -1428,9 +1520,19 @@
                </div>`
             : '';
 
+          const scoreClass = block.rating > 0 ? 'positive' : (block.rating < 0 ? 'negative' : '');
+          const disabledAttr = APP_STATE.canEdit ? '' : 'disabled';
+
           return `
             <div class="solution-variant">
-              ${block.title ? `<div class="solution-variant-title">${highlightText(block.title, query)}</div>` : ''}
+              <div class="variant-top-row">
+                ${block.title ? `<div class="solution-variant-title">${highlightText(block.title, query)}</div>` : '<div class="solution-variant-title"></div>'}
+                <div class="vote-box" title="Рейтинг способа устранения">
+                  <button type="button" class="vote-btn" ${disabledAttr} onclick="voteVariant(${item.id}, ${block.variantIndex}, 1)" title="Нравится">▲</button>
+                  <span class="vote-score ${scoreClass}">${formatScoreText(block.rating)}</span>
+                  <button type="button" class="vote-btn" ${disabledAttr} onclick="voteVariant(${item.id}, ${block.variantIndex}, -1)" title="Не нравится">▼</button>
+                </div>
+              </div>
               ${branchesHtml}
             </div>
           `;
@@ -1495,13 +1597,14 @@
       return div;
     }
 
-    function createVariantEditorBlock(title = '', branches = []) {
+    function createVariantEditorBlock(title = '', branches = [], rating = 0) {
       const div = document.createElement('div');
       div.className = 'editor-block';
       div.dataset.type = 'variant';
+      div.dataset.rating = String(rating || 0);
       div.innerHTML = `
         <div class="editor-block-header">
-          <span class="block-type-tag">Способ устранения</span>
+          <span class="block-type-tag">Способ устранения (рейтинг: ${formatScoreText(rating || 0)})</span>
           <div class="block-controls">
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
             <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
@@ -1640,7 +1743,7 @@
             } else if (b.type === 'note') {
               blocksList.appendChild(createNoteEditorBlock(b.text));
             } else {
-              blocksList.appendChild(createVariantEditorBlock(b.title, b.branches));
+              blocksList.appendChild(createVariantEditorBlock(b.title, b.branches, b.rating));
             }
           });
         } else {
@@ -1772,37 +1875,35 @@
       }
 
       const editorBlocks = Array.from(document.querySelectorAll('#blocksEditorList .editor-block'));
-      const lines = [];
+      const serializedBlocks = [];
 
       editorBlocks.forEach(block => {
         if (block.dataset.type === 'entity') {
           const entityVal = block.querySelector('.entity-text-input').value.trim();
           if (entityVal) {
-            entityVal.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
-              lines.push(`[СУЩ] ${line}`);
-            });
+            serializedBlocks.push({ type: 'entity', text: entityVal });
           }
         } else if (block.dataset.type === 'note') {
           const noteVal = block.querySelector('.note-text-input').value.trim();
           if (noteVal) {
-            noteVal.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
-              lines.push(`[ПРИМ] ${line}`);
-            });
+            serializedBlocks.push({ type: 'note', text: noteVal });
           }
         } else {
           const title = block.querySelector('.variant-title-input').value.trim();
           const branches = Array.from(block.querySelectorAll('.branch-input'))
             .map(inp => inp.value.trim())
             .filter(Boolean);
+          const rating = parseInt(block.dataset.rating || '0', 10) || 0;
 
-          if (title) {
-            lines.push(`* ${title.replace(/\r?\n+/g, ' ')}`);
+          if (title || branches.length) {
+            serializedBlocks.push({ type: 'variant', title, branches, rating });
           }
-          branches.forEach(b => lines.push(`-> ${b}`));
         }
       });
 
-      if (!lines.length && !APP_STATE.editPhotos.length) {
+      const solutionStr = serializeBlocksToSolution(serializedBlocks);
+
+      if (!solutionStr.trim() && !APP_STATE.editPhotos.length) {
         alert('Добавьте хотя бы сущность отказа, способ устранения, примечание или фото');
         return;
       }
@@ -1815,7 +1916,7 @@
       const record = {
         system: document.getElementById('editSystem').value,
         symptom: symptom,
-        solution: lines.join('\n'),
+        solution: solutionStr,
         note: '',
         photos: APP_STATE.editPhotos.join('\n'),
         updated_by: APP_STATE.userName || APP_STATE.userEmail,
@@ -1853,7 +1954,6 @@
 
       saveCache();
       document.getElementById('editorModal').classList.remove('open');
-      renderChips();
       renderCards();
     };
 
@@ -1892,7 +1992,6 @@
       APP_STATE.faults = APP_STATE.faults.filter(f => f.id !== Number(faultId));
       saveCache();
       document.getElementById('editorModal').classList.remove('open');
-      renderChips();
       renderCards();
     };
 
