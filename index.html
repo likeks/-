@@ -13,6 +13,10 @@
       --primary: #1e40af;
       --primary-light: #eff6ff;
       --primary-border: #bfdbfe;
+      --entity-bg: #f5f3ff;
+      --entity-border: #ddd6fe;
+      --entity-accent: #7c3aed;
+      --entity-text: #4c1d95;
       --text-main: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
@@ -137,20 +141,26 @@
 
     .tabs {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(3, 1fr);
       gap: 6px;
       padding: 4px 16px 10px;
       max-width: 720px;
       margin: 0 auto;
     }
 
+    @media (min-width: 600px) {
+      .tabs {
+        grid-template-columns: repeat(6, 1fr);
+      }
+    }
+
     .tab-btn {
       border: 1px solid var(--border);
       background: var(--bg);
       color: var(--text-muted);
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 700;
-      padding: 10px 4px;
+      padding: 9px 4px;
       border-radius: 10px;
       cursor: pointer;
     }
@@ -310,6 +320,20 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+    }
+
+    .entity-box {
+      padding: 9px 12px;
+      background: var(--entity-bg);
+      border-left: 3.5px solid var(--entity-accent);
+      border-radius: 8px;
+      font-size: 13.5px;
+      color: var(--entity-text);
+    }
+
+    .entity-label {
+      font-weight: 700;
+      margin-right: 4px;
     }
 
     .solution-variant {
@@ -547,6 +571,11 @@
       margin-bottom: 10px;
     }
 
+    .editor-block.is-entity {
+      background: var(--entity-bg);
+      border-color: var(--entity-border);
+    }
+
     .editor-block.is-note {
       background: var(--accent-amber-bg);
       border-color: var(--accent-amber-border);
@@ -566,6 +595,7 @@
       color: var(--primary);
     }
 
+    .editor-block.is-entity .block-type-tag { color: var(--entity-accent); }
     .editor-block.is-note .block-type-tag { color: var(--accent-amber); }
 
     .block-controls { display: flex; gap: 4px; }
@@ -608,6 +638,12 @@
       font-weight: 600;
       cursor: pointer;
       color: var(--primary);
+    }
+
+    .btn-small.entity-add {
+      color: var(--entity-accent);
+      border-color: var(--entity-border);
+      background: var(--entity-bg);
     }
 
     .btn-small.note-add {
@@ -734,7 +770,7 @@
         <input type="text" id="searchInput" class="search-input" placeholder="Поиск по выбранной системе..." autocomplete="off">
         <button id="clearSearch" class="clear-search" title="Очистить">×</button>
       </div>
-      <div class="chips-bar" id="chipsContainer"></div>
+      <div class="chips-bar" id="chipsContainer" title="Нажмите на код блока, чтобы отфильтровать карточки"></div>
     </div>
 
     <div class="stats-bar">
@@ -773,9 +809,10 @@
       </div>
 
       <div class="form-group">
-        <label class="form-label">Способы устранения и примечания (меняйте порядок ↑ ↓)</label>
+        <label class="form-label">Сущность отказа, способы устранения и примечания (меняйте порядок ↑ ↓)</label>
         <div id="blocksEditorList"></div>
         <div class="add-buttons-row">
+          <button type="button" class="btn-small entity-add" id="addEntityBtn">+ Сущность отказа</button>
           <button type="button" class="btn-small" id="addVariantBtn">+ Вариант устранения</button>
           <button type="button" class="btn-small note-add" id="addNoteBtn">+ Примечание</button>
         </div>
@@ -805,11 +842,11 @@
     const SUPABASE_KEY = 'sb_publishable_t0FNkzyiUC7q5GAdnM484w_TQvA5Zm9';
     // =========================================================================
 
-    const CACHE_KEY = 'pnk_faults_cache_v2';
+    const CACHE_KEY = 'pnk_faults_cache_v3';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let APP_STATE = {
-      systems: ['КП1', 'КП2', 'КП3', 'ДИСС'],
+      systems: ['КП1', 'КП2', 'КП3', 'ДИСС', 'С3М', 'МСН'],
       currentSystem: 'КП1',
       activeChip: '',
       canEdit: false,
@@ -866,14 +903,35 @@
           }
         });
         APP_STATE.roleNames = map;
+        saveCache();
       }
     }
 
+    function renderMainShell() {
+      document.getElementById('authScreen').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      applyRoleBadge();
+      renderTabs();
+      renderChips();
+      renderCards();
+    }
+
     async function checkSession() {
+      const cached = loadCache();
+      if (cached && Array.isArray(cached.faults) && cached.faults.length) {
+        APP_STATE.canEdit = Boolean(cached.canEdit);
+        APP_STATE.userEmail = cached.userEmail || '';
+        APP_STATE.userName = cached.userName || '';
+        APP_STATE.roleNames = cached.roleNames || {};
+        APP_STATE.faults = cached.faults;
+        setSyncStatus(false, 'Кэш • обновление...');
+        renderMainShell();
+      }
+
       const { data: { session } } = await sb.auth.getSession();
       if (session && session.user) {
         await initAuthorizedApp(session.user);
-      } else {
+      } else if (!cached || !cached.faults || !cached.faults.length) {
         showAuthScreen();
       }
     }
@@ -914,6 +972,7 @@
 
     document.getElementById('logoutBtn').addEventListener('click', async () => {
       if (realtimeChannel) sb.removeChannel(realtimeChannel);
+      localStorage.removeItem(CACHE_KEY);
       await sb.auth.signOut();
       showAuthScreen();
     });
@@ -923,9 +982,6 @@
       const metaName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name)) || '';
       APP_STATE.userName = metaName.trim() || formatAuthorName(user.email);
 
-      document.getElementById('authScreen').style.display = 'none';
-      document.getElementById('mainApp').style.display = 'block';
-
       const { data: roleRow, error: roleErr } = await sb
         .from('user_roles')
         .select('role, display_name')
@@ -933,15 +989,12 @@
         .maybeSingle();
 
       const cached = loadCache();
-      if (roleErr && cached) {
+      if (roleErr && cached && Array.isArray(cached.faults)) {
         APP_STATE.canEdit = cached.canEdit || false;
         APP_STATE.faults = cached.faults || [];
         APP_STATE.roleNames = cached.roleNames || {};
         setSyncStatus(false, 'Офлайн-копия');
-        applyRoleBadge();
-        renderTabs();
-        renderChips();
-        renderCards();
+        renderMainShell();
         return;
       }
 
@@ -955,10 +1008,10 @@
         APP_STATE.userName = roleRow.display_name.trim();
       }
       APP_STATE.canEdit = roleRow.role === 'editor';
-      await loadRoleNamesMap();
-      applyRoleBadge();
-      renderTabs();
-      await loadAllFaults();
+      saveCache();
+      renderMainShell();
+
+      await Promise.all([loadRoleNamesMap(), loadAllFaults()]);
       subscribeRealtime();
     }
 
@@ -986,6 +1039,8 @@
       try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
           canEdit: APP_STATE.canEdit,
+          userEmail: APP_STATE.userEmail,
+          userName: APP_STATE.userName,
           faults: APP_STATE.faults,
           roleNames: APP_STATE.roleNames
         }));
@@ -1099,7 +1154,7 @@
       }
 
       if (!query.trim()) return true;
-      const cleanSol = (item.solution || '').replace(/\[ПРИМ\]/gi, ' ');
+      const cleanSol = (item.solution || '').replace(/\[ПРИМ\]/gi, ' ').replace(/\[СУЩ\]/gi, ' ');
       const fullText = normalizeText(`${item.symptom} ${cleanSol} ${item.note || ''}`);
       const textWords = fullText.split(/[^а-яa-z0-9-]+/).filter(Boolean);
       const textStems = textWords.map(stemRu);
@@ -1212,6 +1267,12 @@
               currentVariant = null;
             }
             blocks.push({ type: 'note', text: line.replace(/^\[ПРИМ\]\s*/i, '') });
+          } else if (/^\[СУЩ\]/i.test(line)) {
+            if (currentVariant) {
+              blocks.push(currentVariant);
+              currentVariant = null;
+            }
+            blocks.push({ type: 'entity', text: line.replace(/^\[СУЩ\]\s*/i, '') });
           } else if (line.startsWith('*')) {
             if (currentVariant) blocks.push(currentVariant);
             currentVariant = { type: 'variant', title: line.replace(/^\*+\s*/, ''), branches: [] };
@@ -1318,6 +1379,10 @@
     function selectSystem(sys) {
       APP_STATE.currentSystem = sys;
       APP_STATE.activeChip = '';
+      const searchEl = document.getElementById('searchInput');
+      const clearBtn = document.getElementById('clearSearch');
+      if (searchEl) searchEl.value = '';
+      if (clearBtn) clearBtn.style.display = 'none';
       renderTabs();
       renderChips();
       renderCards();
@@ -1349,6 +1414,10 @@
         const photos = parsePhotos(item.photos);
 
         const blocksHtml = blocks.map(block => {
+          if (block.type === 'entity') {
+            return `<div class="entity-box"><span class="entity-label">Сущность отказа:</span>${highlightText(block.text, query)}</div>`;
+          }
+
           if (block.type === 'note') {
             return `<div class="note-box"><span class="note-label">Примечание:</span>${highlightText(block.text, query)}</div>`;
           }
@@ -1406,6 +1475,24 @@
         parent.insertBefore(block.nextElementSibling, block);
       }
       requestAnimationFrame(autoResizeAllEditorTextareas);
+    }
+
+    function createEntityEditorBlock(text = '') {
+      const div = document.createElement('div');
+      div.className = 'editor-block is-entity';
+      div.dataset.type = 'entity';
+      div.innerHTML = `
+        <div class="editor-block-header">
+          <span class="block-type-tag">Сущность отказа</span>
+          <div class="block-controls">
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, -1)">↑</button>
+            <button type="button" class="btn-icon" onclick="moveEditorBlock(this, 1)">↓</button>
+            <button type="button" class="btn-icon btn-danger" onclick="this.closest('.editor-block').remove()">✕</button>
+          </div>
+        </div>
+        <textarea class="form-control entity-text-input" rows="1" placeholder="Например: обрыв цепи питания, неисправность канала...">${escapeHtml(text)}</textarea>
+      `;
+      return div;
     }
 
     function createVariantEditorBlock(title = '', branches = []) {
@@ -1548,7 +1635,9 @@
         const parsedBlocks = parseCardBlocks(item.solution, item.note);
         if (parsedBlocks.length) {
           parsedBlocks.forEach(b => {
-            if (b.type === 'note') {
+            if (b.type === 'entity') {
+              blocksList.appendChild(createEntityEditorBlock(b.text));
+            } else if (b.type === 'note') {
               blocksList.appendChild(createNoteEditorBlock(b.text));
             } else {
               blocksList.appendChild(createVariantEditorBlock(b.title, b.branches));
@@ -1570,6 +1659,12 @@
       modal.classList.add('open');
       requestAnimationFrame(autoResizeAllEditorTextareas);
     }
+
+    document.getElementById('addEntityBtn').onclick = () => {
+      const block = createEntityEditorBlock();
+      document.getElementById('blocksEditorList').appendChild(block);
+      requestAnimationFrame(() => autoResizeTextarea(block.querySelector('textarea')));
+    };
 
     document.getElementById('addVariantBtn').onclick = () => {
       const block = createVariantEditorBlock();
@@ -1680,7 +1775,14 @@
       const lines = [];
 
       editorBlocks.forEach(block => {
-        if (block.dataset.type === 'note') {
+        if (block.dataset.type === 'entity') {
+          const entityVal = block.querySelector('.entity-text-input').value.trim();
+          if (entityVal) {
+            entityVal.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
+              lines.push(`[СУЩ] ${line}`);
+            });
+          }
+        } else if (block.dataset.type === 'note') {
           const noteVal = block.querySelector('.note-text-input').value.trim();
           if (noteVal) {
             noteVal.split(/\r?\n/).map(l => l.trim()).filter(Boolean).forEach(line => {
@@ -1701,7 +1803,7 @@
       });
 
       if (!lines.length && !APP_STATE.editPhotos.length) {
-        alert('Добавьте хотя бы один способ устранения, примечание или фото');
+        alert('Добавьте хотя бы сущность отказа, способ устранения, примечание или фото');
         return;
       }
 
